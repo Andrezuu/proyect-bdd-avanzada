@@ -38,8 +38,8 @@ print("Limpiando datos existentes...")
 tables_to_clear = [
     'logs_json', 'historial_apuestas', 'evento_patrocinadores', 'patrocinadores',
     'evento_equipos', 'equipos', 'transacciones', 'apuestas', 'mercados',
-    'comentarios_eventos', 'eventos', 'metodos_pago', 'usuario_rol', 'roles', 'usuarios',
-    'categorias_deporte'
+    'comentarios_eventos', 'eventos_categorias', 'eventos', 'categorias', 
+    'metodos_pago', 'usuario_rol', 'roles', 'usuarios'
 ]
 
 for table in tables_to_clear:
@@ -54,14 +54,14 @@ for rol in roles:
     cur.execute("INSERT INTO roles (nombre_rol) VALUES (%s)", (rol,))
 
 # ---------------------
-# CATEGORÍAS DE DEPORTE
+# CATEGORÍAS
 # ---------------------
-print("Insertando categorías de deporte...")
+print("Insertando categorías...")
 categorias = ['Fútbol', 'Baloncesto', 'Tenis', 'Béisbol', 'Voleibol', 
               'Hockey', 'Rugby', 'Cricket', 'Golf', 'Boxeo']
 categoria_ids = []
 for categoria in categorias:
-    cur.execute("INSERT INTO categorias_deporte (nombre) VALUES (%s) RETURNING id_categoria", (categoria,))
+    cur.execute("INSERT INTO categorias (nombre) VALUES (%s) RETURNING id_categoria", (categoria,))
     categoria_ids.append(cur.fetchone()[0])
 
 # ---------------------
@@ -224,14 +224,21 @@ for i in range(NUM_EVENTOS):
     id_evento = cur.fetchone()[0]
     evento_ids.append(id_evento)
     
+    # Relacionar evento con categoría
+    categoria_evento = random.choice(categoria_ids)
+    cur.execute("""
+        INSERT INTO eventos_categorias (id_categoria, id_evento)
+        VALUES (%s, %s)
+    """, (categoria_evento, id_evento))
+    
     # Equipos relacionados con el evento
     equipos_deporte = [eq for eq in equipo_ids if random.random() < 0.3]  # Filtro aproximado
     if len(equipos_deporte) >= 2:
         equipos_evento = random.sample(equipos_deporte, 2)
         for idx, equipo_id in enumerate(equipos_evento):
             puntuacion = 0
-            if estado == 'finalizado' and 'marcador_local' in resultado:
-                puntuacion = resultado['marcador_local'] if idx == 0 else resultado['marcador_visitante']
+            if estado == 'finalizado' and resultado:
+                puntuacion = resultado.get('marcador_local', 0) if idx == 0 else resultado.get('marcador_visitante', 0)
             
             cur.execute("""
                 INSERT INTO evento_equipos (id_evento, id_equipo, es_local, puntuacion)
@@ -286,19 +293,33 @@ print(f"Insertando {NUM_COMENTARIOS} comentarios...")
 comentarios_ejemplo = [
     "¡Qué gran partido!", "Esperando un buen resultado", "El equipo local se ve fuerte",
     "Creo que será un empate", "¡Vamos mi equipo!", "Partido muy reñido",
-    "Excelente cuota para apostar", "No me convence este mercado"
+    "Excelente cuota para apostar", "No me convence este mercado", "El árbitro está sesgado", "Esperando a que algo suceda... 🐱‍👤", 
+     "Espero que no haya sorpresas", "Marcalo", "Necesitas algo?"
 ]
 
+# Para evitar conflictos de PRIMARY KEY, solo insertamos un comentario por usuario-evento
+comentarios_insertados = set()
 for i in range(NUM_COMENTARIOS):
     if i % 1000 == 0:
         print(f"  Comentarios: {i}/{NUM_COMENTARIOS}")
+    
+    # Generar combinación única de usuario-evento
+    max_intentos = 10
+    for _ in range(max_intentos):
+        user_id = random.choice(usuarios_ids)
+        evento_id = random.choice(evento_ids)
+        if (user_id, evento_id) not in comentarios_insertados:
+            comentarios_insertados.add((user_id, evento_id))
+            break
+    else:
+        continue  # Si no se pudo encontrar una combinación única, saltar
     
     cur.execute("""
         INSERT INTO comentarios_eventos (id_usuario, id_evento, comentario, fecha)
         VALUES (%s, %s, %s, %s)
     """, (
-        random.choice(usuarios_ids),
-        random.choice(evento_ids),
+        user_id,
+        evento_id,
         random.choice(comentarios_ejemplo) + " " + fake.sentence(),
         fake.date_time_between(start_date='-30d', end_date='now')
     ))
@@ -463,6 +484,6 @@ Resumen de datos generados:
 - Patrocinadores: {NUM_PATROCINADORES}
 - Comentarios: {NUM_COMENTARIOS}
 - Transacciones: {NUM_TRANSACCIONES}
-- Categorías de deporte: {len(categorias)}
+- Categorías: {len(categorias)}
 - Roles: {len(roles)}
 """)
