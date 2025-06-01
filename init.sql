@@ -8,7 +8,9 @@ create table
         password_hash TEXT,
         fecha_registro TIMESTAMP DEFAULT NOW (),
         saldo NUMERIC(12, 2),
-        estado BOOLEAN DEFAULT TRUE
+        estado BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists roles cascade;
@@ -16,7 +18,9 @@ drop table if exists roles cascade;
 create table
     roles (
         id_rol SERIAL PRIMARY KEY,
-        nombre_rol VARCHAR(50) UNIQUE
+        nombre_rol VARCHAR(50) UNIQUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists usuario_rol cascade;
@@ -25,6 +29,8 @@ create table
     usuario_rol (
         id_usuario INT REFERENCES usuarios (id_usuario),
         id_rol INT REFERENCES roles (id_rol),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_usuario, id_rol)
     );
 
@@ -37,7 +43,9 @@ create table
         deporte VARCHAR(50),
         fecha TIMESTAMP,
         resultado JSONB,
-        estado VARCHAR(20)
+        estado VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists mercados cascade;
@@ -48,7 +56,9 @@ create table
         id_evento INT REFERENCES eventos (id_evento),
         tipo_mercado VARCHAR(50),
         cuota NUMERIC(5, 2),
-        estado BOOLEAN DEFAULT TRUE
+        estado BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists metodos_pago cascade;
@@ -60,7 +70,9 @@ create table
         tipo VARCHAR(50), -- tarjeta, paypal, etc.
         detalles JSONB,
         activo BOOLEAN DEFAULT TRUE,
-        fecha_registro TIMESTAMP DEFAULT NOW ()
+        fecha_registro TIMESTAMP DEFAULT NOW (),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists comentarios_eventos cascade;
@@ -71,6 +83,8 @@ create table
         id_evento INT REFERENCES eventos (id_evento),
         comentario TEXT,
         fecha TIMESTAMP DEFAULT NOW (),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_usuario, id_evento)
     );
 
@@ -79,7 +93,9 @@ drop table if exists categorias cascade;
 create table
     categorias (
         id_categoria SERIAL PRIMARY KEY,
-        nombre VARCHAR(50) UNIQUE
+        nombre VARCHAR(50) UNIQUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists eventos_categorias cascade;
@@ -88,6 +104,8 @@ create table
     eventos_categorias (
         id_categoria INT REFERENCES categorias (id_categoria) ON DELETE CASCADE,
         id_evento INT REFERENCES eventos (id_evento) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_categoria, id_evento)
     );
 
@@ -101,7 +119,9 @@ create table
         monto NUMERIC(10, 2),
         ganancia_esperada NUMERIC(10, 2),
         fecha TIMESTAMP DEFAULT NOW (),
-        estado_apuesta VARCHAR(20)
+        estado_apuesta VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists transacciones cascade;
@@ -113,7 +133,9 @@ create table
         tipo_transaccion VARCHAR(10),
         monto NUMERIC(10, 2),
         fecha TIMESTAMP DEFAULT NOW (),
-        estado VARCHAR(20)
+        estado VARCHAR(20),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists equipos cascade;
@@ -126,7 +148,9 @@ create table
         deporte VARCHAR(50),
         logo_url VARCHAR(255),
         fecha_fundacion DATE,
-        activo BOOLEAN DEFAULT TRUE
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 -- 12. Tabla para relacionar equipos con eventos
@@ -138,6 +162,8 @@ create table
         id_equipo INT REFERENCES equipos (id_equipo),
         es_local BOOLEAN DEFAULT FALSE,
         puntuacion INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_evento, id_equipo)
     );
 
@@ -150,7 +176,9 @@ create table
         logo_url VARCHAR(255),
         sitio_web VARCHAR(255),
         contacto_email VARCHAR(100),
-        activo BOOLEAN DEFAULT TRUE
+        activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists evento_patrocinadores cascade;
@@ -165,6 +193,8 @@ create table
         fecha_inicio DATE,
         fecha_fin DATE,
         activo BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_evento, id_patrocinador)
     );
 
@@ -176,7 +206,9 @@ create table
         id SERIAL PRIMARY KEY,
         id_usuario INT REFERENCES usuarios (id_usuario),
         historial JSONB,
-        fecha_actualizacion TIMESTAMP DEFAULT NOW ()
+        fecha_actualizacion TIMESTAMP DEFAULT NOW (),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );
 
 drop table if exists logs_json cascade;
@@ -186,5 +218,7 @@ create table
         id SERIAL PRIMARY KEY,
         tipo_log VARCHAR(50),
         datos JSONB,
-        fecha TIMESTAMP DEFAULT NOW ()
+        fecha TIMESTAMP DEFAULT NOW (),
+        created_at TIMESTAMP DEFAULT NOW (),
+        updated_at TIMESTAMP DEFAULT NOW ()
     );

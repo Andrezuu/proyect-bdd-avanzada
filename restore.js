@@ -11,7 +11,7 @@ const folder = "/tmp";
 const restore_db = "hash_apuestas_db";
 const createRestoreDbCommand = `docker exec -u ${dockerUser} ${dockerContainer} sh -c "createdb -U ${user} ${restore_db} 2>/dev/null || true"`;
 
-exec(createRestoreDbCommand, (error, stdout, stderr) => {
+exec(createRestoreDbCommand, (error, stderr) => {
   console.log("Trying to create the database if it does not exist");
   if (error) {
     console.error(`Error executing command: ${error.message}`);
@@ -40,13 +40,11 @@ exec(latestBackupCommand, (error, stdout, stderr) => {
   console.log(`📁 Respaldo más reciente encontrado: ${latestBackup}`);
   exec(`${restoreCommand}${latestBackup}`, (error, stdout, stderr) => {
     if (error) {
-    //   console.error(`Error executing restore command: `);
-        console.error(`Error executing restore command: ${error.message}`);
+      console.error(`Error executing restore command: ${error.message}`);
       return;
     }
     if (stderr) {
-      console.error(`Error output during restore: `);
-      //   console.error(`Error output during restore: ${stderr}`);
+      console.error(`Error output during restore: ${stderr}`);
       return;
     }
     console.log("✅ Base de datos restaurada correctamente.");
