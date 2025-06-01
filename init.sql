@@ -211,14 +211,96 @@ create table
         updated_at TIMESTAMP DEFAULT NOW ()
     );
 
+-- PARTICIONES - Logs con partición por mes
 drop table if exists logs_json cascade;
 
 create table
     logs_json (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL,
         tipo_log VARCHAR(50),
         datos JSONB,
         fecha TIMESTAMP DEFAULT NOW (),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
-    );
+    )
+PARTITION BY
+    RANGE (fecha);
+
+-- Crear particiones para logs (último año + próximos 6 meses)
+CREATE TABLE
+    logs_json_2024_12 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2024-12-01') TO ('2025-01-01');
+
+CREATE TABLE
+    logs_json_2025_01 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-01-01') TO ('2025-02-01');
+
+CREATE TABLE
+    logs_json_2025_02 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-02-01') TO ('2025-03-01');
+
+CREATE TABLE
+    logs_json_2025_03 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-03-01') TO ('2025-04-01');
+
+CREATE TABLE
+    logs_json_2025_04 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-04-01') TO ('2025-05-01');
+
+CREATE TABLE
+    logs_json_2025_05 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-05-01') TO ('2025-06-01');
+
+CREATE TABLE
+    logs_json_2025_06 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-06-01') TO ('2025-07-01');
+
+CREATE TABLE
+    logs_json_2025_07 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-07-01') TO ('2025-08-01');
+
+CREATE TABLE
+    logs_json_2025_08 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-08-01') TO ('2025-09-01');
+
+CREATE TABLE
+    logs_json_2025_09 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-09-01') TO ('2025-10-01');
+
+CREATE TABLE
+    logs_json_2025_10 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-10-01') TO ('2025-11-01');
+
+CREATE TABLE
+    logs_json_2025_11 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-11-01') TO ('2025-12-01');
+
+CREATE TABLE
+    logs_json_2025_12 PARTITION OF logs_json FOR
+VALUES
+FROM
+    ('2025-12-01') TO ('2026-01-01');
