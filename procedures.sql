@@ -135,30 +135,48 @@ CALL sp_retirar_saldo(99999, 100.00);
 CALL sp_retirar_saldo(1, 1000000.00);
 
 ------- 6SP EX + ROLL
-CREATE OR REPLACE PROCEDURE sp_acreditar_usuario(p_id_usuario INT, p_monto NUMERIC)
-LANGUAGE plpgsql
-AS $$
+CREATE OR REPLACE PROCEDURE sp_registrar_apuesta(
+  IN p_id_usuario INT,
+  IN p_id_mercado INT,
+  IN p_monto NUMERIC
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_saldo_actual NUMERIC;
+  v_evento_activo BOOLEAN;
+  v_id_evento INT;
 BEGIN
-  BEGIN
-    IF p_monto <= 0 THEN
-      RAISE EXCEPTION 'El monto debe ser positivo.';
-    END IF;
+  SELECT id_evento INTO v_id_evento
+  FROM mercados
+  WHERE id_mercado = p_id_mercado;
 
-    UPDATE usuarios
-    SET saldo = saldo + p_monto
-    WHERE id_usuario = p_id_usuario;
+  SELECT estado = 'activo' INTO v_evento_activo
+  FROM eventos
+  WHERE id_evento = v_id_evento;
 
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Usuario no encontrado.';
-    END IF;
+  IF NOT v_evento_activo THEN
+    RAISE EXCEPTION 'No se puede apostar: el evento no está activo.';
+  END IF;
 
-  EXCEPTION
-    WHEN OTHERS THEN
-      RAISE NOTICE 'Error al acreditar saldo: %', SQLERRM;
-      ROLLBACK;
-  END;
+  SELECT saldo INTO v_saldo_actual
+  FROM usuarios
+  WHERE id_usuario = p_id_usuario;
+
+  IF v_saldo_actual < p_monto THEN
+    RAISE EXCEPTION 'Saldo insuficiente.';
+  END IF;
+
+  INSERT INTO apuestas (id_usuario, id_mercado, monto, fecha, estado_apuesta)
+  VALUES (p_id_usuario, p_id_mercado, p_monto, NOW(), 'activa');
+
+  UPDATE usuarios
+  SET saldo = saldo - p_monto
+  WHERE id_usuario = p_id_usuario;
+
+  RAISE NOTICE 'Apuesta registrada con éxito.';
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Error: %', SQLERRM;
 END;
 $$;
-
-CALL sp_acreditar_usuario(1, 100.00);
-CALL sp_acreditar_usuario(1, -50.00);
