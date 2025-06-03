@@ -11,7 +11,7 @@ BEGIN
       'id_usuario', NEW.id_usuario,
       'id_mercado', NEW.id_mercado,
       'monto', NEW.monto,
-      'fecha', NEW.fecha
+      'created_at', NEW.created_at
     )
   );
   RETURN NEW;
@@ -23,12 +23,12 @@ AFTER INSERT ON apuestas
 FOR EACH ROW
 EXECUTE FUNCTION log_creacion_apuesta();
 
-INSERT INTO apuestas (id_usuario, id_mercado, monto, fecha, estado_apuesta)
-VALUES (1, 1, 150.00, NOW(), 'activa');
+INSERT INTO apuestas (id_usuario, id_mercado, monto,  estado_apuesta)
+VALUES (1, 1, 150.00, 'activa');
 
 SELECT * FROM logs_json
 WHERE tipo_log = 'CREAR_APUESTA'
-ORDER BY fecha DESC;
+ORDER BY created_at DESC;
 
 ----2T
 CREATE OR REPLACE FUNCTION log_cambio_saldo()
@@ -63,7 +63,7 @@ UPDATE usuarios SET saldo = saldo + 50 WHERE id_usuario = 1;
 
 SELECT * FROM logs_json
 WHERE tipo_log = 'CAMBIO_SALDO'
-ORDER BY fecha DESC;
+ORDER BY created_at DESC;
 -----
 ------3T
 CREATE OR REPLACE FUNCTION log_apuesta_cancelada()
@@ -97,7 +97,7 @@ UPDATE apuestas SET estado_apuesta = 'anulada' WHERE id_apuesta = 1;
 
 SELECT * FROM logs_json
 WHERE tipo_log = 'APUESTA_CANCELADA'
-ORDER BY fecha DESC; ----------------PARA REVISAR CON ANDRESSSS
+ORDER BY created_at DESC; ----------------PARA REVISAR CON ANDRESSSS
 
 -----
 ---4T
@@ -116,9 +116,9 @@ BEFORE UPDATE ON usuarios
 FOR EACH ROW
 EXECUTE FUNCTION validar_saldo_no_negativo();
 
-UPDATE usuarios SET saldo = saldo - 10 WHERE id_usuario = 1;
+UPDATE usuarios SET saldo = saldo + 1000 WHERE id_usuario = 1;
 
-UPDATE usuarios SET saldo = -100 WHERE id_usuario = 1;
+UPDATE usuarios SET saldo = saldo -10 WHERE id_usuario = 1;
 
 ------
 ---5T
@@ -155,7 +155,7 @@ WHERE id_evento = 1;
 
 SELECT * FROM logs_json
 WHERE tipo_log = 'RESULTADO_EVENTO_ACTUALIZADO'
-ORDER BY fecha DESC;
+ORDER BY created_at DESC;
 
 ----
 --6T
@@ -178,8 +178,8 @@ BEFORE INSERT ON apuestas
 FOR EACH ROW
 EXECUTE FUNCTION calcular_ganancia_esperada();
 
-INSERT INTO apuestas (id_usuario, id_mercado, monto, fecha, estado_apuesta)
-VALUES (1, 1, 250, NOW(), 'activa');
+INSERT INTO apuestas (id_usuario, id_mercado, monto, estado_apuesta)
+VALUES (1, 1, 250, 'activa');
 
 SELECT id_apuesta, monto, ganancia_esperada
 FROM apuestas
