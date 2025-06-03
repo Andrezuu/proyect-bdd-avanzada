@@ -8,12 +8,11 @@ const job = new cron.CronJob(
   "*/1 * * * *", // cronTime
   function () {
     console.log("Creating backup");
-    const dockerUser = "postgres";
-    const dockerContainer = "apuestas_postgres";
-    const user = "postgres";
-    const database = "apuestas_db";
-    const folder = "/tmp";
-    const currentDate = new Date();
+    const dockerUser = process.env.DOCKER_USER || "postgres"
+    const dockerContainer = process.env.DOCKER_CONTAINER || "apuestas_postgres";
+    const user = process.env.DB_USER || "postgres";
+    const database = process.env.DB_NAME || "apuestas_db";
+    const folder = process.env.BACKUP_FOLDER || "/tmp";
     const fileName = `backup_${dayjs().format("YYYYMMDD_HHmmss")}.dump`;
     const backupCommand = `docker exec -u ${dockerUser} ${dockerContainer} \
          pg_dump -U ${user} -F c -d ${database} -f ${folder}/${fileName}`;

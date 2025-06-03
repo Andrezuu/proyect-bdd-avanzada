@@ -4,11 +4,11 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 console.log("Restoring backup");
-const dockerUser = "postgres";
-const dockerContainer = "apuestas_postgres";
-const user = "postgres";
-const folder = "/tmp";
-const restore_db = "hash_apuestas_db";
+const dockerUser = process.env.DOCKER_USER || "postgres";
+const dockerContainer = process.env.DOCKER_CONTAINER || "apuestas_postgres";
+const user = process.env.DB_USER || "postgres";
+const folder = process.env.BACKUP_FOLDER || "/tmp";
+const restore_db = process.env.RESTORE_DB || "apuestas_db";
 const createRestoreDbCommand = `docker exec -u ${dockerUser} ${dockerContainer} sh -c "createdb -U ${user} ${restore_db} 2>/dev/null || true"`;
 
 exec(createRestoreDbCommand, (error, stderr) => {

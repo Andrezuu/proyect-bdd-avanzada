@@ -57,51 +57,9 @@ docker cp init.sql apuestas_postgres:/tmp/init.sql
 docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/init.sql
 ```
 
-### 2. Cargar funciones (`plpgsql`)
+--- 
 
-```bash
-docker cp functions.sql apuestas_postgres:/tmp/functions.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/functions.sql
-```
-
-### 3. Cargar procedimientos almacenados
-
-```bash
-docker cp procedures.sql apuestas_postgres:/tmp/procedures.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/procedures.sql
-```
-
-### 4. Cargar triggers
-
-```bash
-docker cp triggers.sql apuestas_postgres:/tmp/triggers.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/triggers.sql
-```
-
-### 5. Crear índices
-
-```bash
-docker cp indexes.sql apuestas_postgres:/tmp/indexes.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/indexes.sql
-```
-
-### 6. Ejecutar lógica de ofuscamiento
-
-```bash
-docker cp hashing.sql apuestas_postgres:/tmp/hashing.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/hashing.sql
-```
-
-### 7. Aplicar consultas optimizadas
-
-```bash
-docker cp optimization.sql apuestas_postgres:/tmp/optimization.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/optimization.sql
-```
-
----
-
-## 📊 Carga de Datos Ficticios
+## 2. 📊 Carga de Datos Ficticios
 
 ### Instalar dependencias en Python
 
@@ -116,6 +74,57 @@ python init_data.py
 ```
 
 El script pobla las tablas principales con usuarios, eventos deportivos, mercados, y apuestas simuladas utilizando la librería `faker`.
+
+--- 
+
+### 3. Creacion de views
+
+```bash
+docker cp views.sql apuestas_postgres:/tmp/views.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/views.sql
+```
+
+### 4. Cargar funciones (`plpgsql`)
+
+```bash
+docker cp functions.sql apuestas_postgres:/tmp/functions.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/functions.sql
+```
+
+### 5. Cargar procedimientos almacenados
+
+```bash
+docker cp procedures.sql apuestas_postgres:/tmp/procedures.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/procedures.sql
+```
+
+### 6. Cargar triggers
+
+```bash
+docker cp triggers.sql apuestas_postgres:/tmp/triggers.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/triggers.sql
+```
+
+### 7. Crear índices
+
+```bash
+docker cp indexes.sql apuestas_postgres:/tmp/indexes.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/indexes.sql
+```
+
+### 8. Ejecutar lógica de ofuscamiento
+
+```bash
+docker cp hashing.sql apuestas_postgres:/tmp/hashing.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/hashing.sql
+```
+
+### 9. Aplicar consultas optimizadas
+
+```bash
+docker cp optimization.sql apuestas_postgres:/tmp/optimization.sql 
+docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/optimization.sql
+```
 
 ---
 
