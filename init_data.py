@@ -74,7 +74,7 @@ for i in range(NUM_USUARIOS):
         print(f"  Usuarios: {i}/{NUM_USUARIOS}")
     
     cur.execute("""
-        INSERT INTO usuarios (nombre, email, password_hash, saldo, estado)
+        INSERT INTO usuarios (nombre, email, password, saldo, estado)
         VALUES (%s, %s, %s, %s, %s) RETURNING id_usuario
     """, (
         fake.name(), 

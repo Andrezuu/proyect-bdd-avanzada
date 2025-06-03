@@ -12,7 +12,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   BEGIN
-    INSERT INTO usuarios (nombre, email, password_hash, saldo,  estado)
+    INSERT INTO usuarios (nombre, email, password, saldo,  estado)
     VALUES (p_nombre, p_email, crypt(p_contrasena, gen_salt('bf')), p_saldo, true);
   EXCEPTION
     WHEN OTHERS THEN

@@ -118,14 +118,6 @@ docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/indexe
 docker cp hashing.sql apuestas_postgres:/tmp/hashing.sql 
 docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/hashing.sql
 ```
-
-### 9. Aplicar consultas optimizadas
-
-```bash
-docker cp optimization.sql apuestas_postgres:/tmp/optimization.sql 
-docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/optimization.sql
-```
-
 ---
 
 ## ✅ Requerimientos Cumplidos - Fase 1

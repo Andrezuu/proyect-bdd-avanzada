@@ -5,7 +5,7 @@ create table
         id_usuario SERIAL PRIMARY KEY,
         nombre VARCHAR(100),
         email VARCHAR(100) UNIQUE,
-        password_hash TEXT,
+        password TEXT,
         saldo NUMERIC(12, 2),
         estado BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW (),
