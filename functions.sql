@@ -1,15 +1,31 @@
 --FUNCIONES
-CREATE OR REPLACE FUNCTION crear_apuesta(
-  p_usuario INT,
-  p_mercado INT,
-  p_monto NUMERIC
+CREATE OR REPLACE FUNCTION autenticar_usuario(
+  p_email TEXT,
+  p_contrasena TEXT
 )
-RETURNS VOID AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_password_hash TEXT;
 BEGIN
-  INSERT INTO apuestas (id_usuario, id_mercado, monto, fecha, estado_apuesta)
-  VALUES (p_usuario, p_mercado, p_monto, NOW(), 'activa');
+  SELECT password INTO v_password_hash
+  FROM usuarios
+  WHERE email = p_email;
+
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+
+  IF crypt(p_contrasena, v_password_hash) = v_password_hash THEN
+    RETURN TRUE; 
+  ELSE
+    RETURN FALSE; 
+  END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+
 --2
 CREATE OR REPLACE FUNCTION actualizar_resultado_evento(p_evento INT, p_resultado JSONB)
 RETURNS VOID AS $$
@@ -72,8 +88,6 @@ SELECT actualizar_resultado_evento(3, '{"Ganador": "Argentina"}');
 SELECT resultado FROM eventos WHERE id_evento = 1;
 ---
 
----3 si funcionaaaaaaaaaa actualizar saldooooo
----
 SELECT saldo FROM usuarios WHERE id_usuario = 1;
 
 SELECT actualizar_saldo_usuario(1, 500.00);
