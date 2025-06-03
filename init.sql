@@ -6,7 +6,6 @@ create table
         nombre VARCHAR(100),
         email VARCHAR(100) UNIQUE,
         password_hash TEXT,
-        fecha_registro TIMESTAMP DEFAULT NOW (),
         saldo NUMERIC(12, 2),
         estado BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW (),
@@ -82,7 +81,6 @@ create table
         id_usuario INT REFERENCES usuarios (id_usuario),
         id_evento INT REFERENCES eventos (id_evento),
         comentario TEXT,
-        fecha TIMESTAMP DEFAULT NOW (),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW (),
         PRIMARY KEY (id_usuario, id_evento)
@@ -132,7 +130,6 @@ create table
         id_usuario INT REFERENCES usuarios (id_usuario),
         tipo_transaccion VARCHAR(10),
         monto NUMERIC(10, 2),
-        fecha TIMESTAMP DEFAULT NOW (),
         estado VARCHAR(20),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
@@ -206,7 +203,6 @@ create table
         id SERIAL PRIMARY KEY,
         id_usuario INT REFERENCES usuarios (id_usuario),
         historial JSONB,
-        fecha_actualizacion TIMESTAMP DEFAULT NOW (),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
     );
@@ -219,12 +215,11 @@ create table
         id BIGSERIAL,
         tipo_log VARCHAR(50),
         datos JSONB,
-        fecha TIMESTAMP DEFAULT NOW (),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
     )
 PARTITION BY
-    RANGE (fecha);
+    RANGE (created_at);
 
 -- Crear particiones para logs (último año + próximos 6 meses)
 CREATE TABLE

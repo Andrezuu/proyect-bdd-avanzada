@@ -315,13 +315,12 @@ for i in range(NUM_COMENTARIOS):
         continue  # Si no se pudo encontrar una combinación única, saltar
     
     cur.execute("""
-        INSERT INTO comentarios_eventos (id_usuario, id_evento, comentario, fecha)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO comentarios_eventos (id_usuario, id_evento, comentario)
+        VALUES (%s, %s, %s)
     """, (
         user_id,
         evento_id,
         random.choice(comentarios_ejemplo) + " " + fake.sentence(),
-        fake.date_time_between(start_date='-30d', end_date='now')
     ))
 
 # ---------------------
@@ -396,13 +395,12 @@ for i in range(NUM_TRANSACCIONES):
     estado = random.choices(estados_transaccion, weights=[80, 10, 7, 3])[0]
     
     cur.execute("""
-        INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, fecha, estado)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, estado)
+        VALUES (%s, %s, %s, %s)
     """, (
         random.choice(usuarios_ids),
         tipo,
         monto,
-        fake.date_time_between(start_date='-90d', end_date='now'),
         estado
     ))
 
