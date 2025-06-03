@@ -170,4 +170,3 @@ proyect-bdd-avanzada/
 └── views.sql
 
 ```
-

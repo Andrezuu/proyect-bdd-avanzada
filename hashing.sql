@@ -10,7 +10,7 @@ UPDATE metodos_pago mp set detalles = '{"clave": "valor"}';
 
 
 select *
-from metodos_pago mp 
+from metodos_pago mp;
 
 select *
 from apuestas a 
