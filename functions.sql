@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto; 
+
 --FUNCIONES
 CREATE OR REPLACE FUNCTION autenticar_usuario(
   p_email TEXT,
