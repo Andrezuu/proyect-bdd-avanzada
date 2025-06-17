@@ -150,7 +150,7 @@ EXECUTE FUNCTION log_resultado_evento();
 SELECT resultado FROM eventos WHERE id_evento = 3;
 
 UPDATE eventos
-SET resultado = to_jsonb('ARGENTINA_CAMPEÓN'::text)
+SET resultado = '{"resultado": "Equipo A gana", "cuota": 1.5}'
 WHERE id_evento = 1;
 
 SELECT * FROM logs_json

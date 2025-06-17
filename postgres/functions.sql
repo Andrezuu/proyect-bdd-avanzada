@@ -112,14 +112,14 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM apuestas WHERE id_usuario = 1;
 
 
-SELECT actualizar_resultado_evento(3, '{"Ganador": "Argentina"}');
+-- SELECT actualizar_resultado_evento(3, '{"Ganador": "Argentina"}');
 
 SELECT resultado FROM eventos WHERE id_evento = 1;
 ---
 
 SELECT saldo FROM usuarios WHERE id_usuario = 1;
 
-SELECT actualizar_saldo_usuario(1, 500.00);
+-- SELECT actualizar_saldo_usuario(1, 500.00);
 
 SELECT saldo FROM usuarios WHERE id_usuario = 1;
 -----
