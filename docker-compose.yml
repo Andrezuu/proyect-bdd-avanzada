@@ -1,19 +1,44 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: apuestas_postgres
+  # PostgreSQL Master
+  postgres_primary:
+    image: bitnami/postgresql:14
+    container_name: apuestas_postgres_primary
     restart: always
-    environment:
-      POSTGRES_DB: apuestas_db
-      POSTGRES_HOST_AUTH_METHOD: trust
-      POSTGRES_USER: postgres
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=master
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres_password
+      - POSTGRESQL_DATABASE=apuestas_db
+      - POSTGRESQL_REPLICATION_USER=replicator
+      - POSTGRESQL_REPLICATION_PASSWORD=replicator_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./primary_data:/bitnami/postgresql
 
+  # PostgreSQL Replica
+  postgres_replica:
+    image: bitnami/postgresql:14
+    container_name: apuestas_postgres_replica
+    restart: always
+    depends_on:
+      - postgres_primary
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRESQL_REPLICATION_MODE=slave
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres_password
+      - POSTGRESQL_MASTER_HOST=postgres_primary
+      - POSTGRESQL_MASTER_PORT_NUMBER=5432
+      - POSTGRESQL_REPLICATION_USER=replicator
+      - POSTGRESQL_REPLICATION_PASSWORD=replicator_password
+    volumes:
+      - ./replica_data:/bitnami/postgresql
+
+  # MySQL
   mysql:
     image: mysql:8
     container_name: apuestas_mysql
@@ -27,6 +52,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  # MongoDB
   mongodb:
     image: mongo:6.0
     container_name: apuestas_mongo
@@ -43,3 +69,5 @@ volumes:
   postgres_data:
   mysql_data:
   mongo_data:
+  primary_data:
+  replica_data:
