@@ -8,7 +8,7 @@ REM ---------- POSTGRES ----------
 echo [PostgreSQL] Ejecutando archivos SQL...
 for %%F in (init views functions procedures triggers indexes hashing) do (
     echo [PostgreSQL] %%F.sql
-    docker cp postgres/%%F.sql apuestas_postgres_primary:/tmp/%%F.sql
+    docker cp postgres/%%F.sql apuestas_postgres:/tmp/%%F.sql
     docker exec -it apuestas_postgres psql -U postgres -d apuestas_db -f /tmp/%%F.sql 1>nul
 
     if "!FIRST_RUN!"=="1" (
