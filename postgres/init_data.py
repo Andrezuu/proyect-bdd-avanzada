@@ -1,3 +1,4 @@
+from bson import ObjectId
 import psycopg2
 from faker import Faker
 import random
@@ -191,9 +192,9 @@ for i in range(NUM_EVENTOS):
     estado = random.choices(estados_evento, weights=[40, 10, 45, 5])[0]
     
     # Fecha del evento
-    if estado == 'pendiente':
+    if (estado == 'pendiente'):
         fecha_evento = fake.future_datetime(end_date="+60d")
-    elif estado == 'en_vivo':
+    elif (estado == 'en_vivo'):
         fecha_evento = fake.date_time_between(start_date='-1h', end_date='+2h')
     else:  # finalizado o cancelado
         fecha_evento = fake.past_datetime(start_date='-30d')
@@ -468,6 +469,173 @@ for _ in range(1000):
 # ---------------------
 print("Confirmando transacciones...")
 conn.commit()
+
+print("\n==== Iniciando generación de datos en MongoDB ====")
+
+# Conexión a MongoDB
+from pymongo import MongoClient
+mongo_client = MongoClient("mongodb://mongo:mongo@localhost:27017/?authSource=admin")
+mongo_db = mongo_client["proyecto"]
+
+# Limpiar colecciones existentes
+print("Limpiando colecciones de MongoDB...")
+for collection in ['notificaciones', 'reportes', 'actividades_usuario', 'recompensas_diarias', 'mensajes_soporte']:
+    mongo_db[collection].drop()
+
+# Mapeo de usuarios PostgreSQL a MongoDB
+print("Sincronizando usuarios con PostgreSQL...")
+usuarios_mongo = []
+for user_id in usuarios_ids:
+    cur.execute("SELECT nombre, email, created_at FROM usuarios WHERE id_usuario = %s", (user_id,))
+    pg_user = cur.fetchone()
+    usuario_mongo = {
+        "_id": user_id,  # Usar el mismo ID que en PostgreSQL
+        "nombre": pg_user[0],
+        "email": pg_user[1],
+        "fecha_registro": pg_user[2]
+    }
+    usuarios_mongo.append(usuario_mongo)
+
+# Notificaciones
+print("Generando notificaciones...")
+tipos_notificacion = ["sistema", "promocion", "seguridad", "apuesta", "deposito"]
+notificaciones = []
+for _ in range(NUM_USUARIOS * 3):  # 3 notificaciones promedio por usuario
+    usuario = random.choice(usuarios_mongo)
+    notificacion = {
+        "usuario_id": usuario["_id"],  # Ahora usa el mismo ID que PostgreSQL
+        "mensaje": fake.sentence(),
+        "tipo": random.choice(tipos_notificacion),
+        "fecha": fake.date_time_between(start_date=usuario["fecha_registro"]),
+        "leida": random.choice([True, False])
+    }
+    notificaciones.append(notificacion)
+mongo_db.notificaciones.insert_many(notificaciones)
+
+# Reportes
+print("Generando reportes...")
+motivos_reporte = ["contenido_ofensivo", "bug", "fraude", "spam", "otro"]
+estados_reporte = ["pendiente", "en_proceso", "resuelto", "cerrado"]
+reportes = []
+for _ in range(NUM_USUARIOS // 4):  # 25% de usuarios crean reportes
+    usuario = random.choice(usuarios_mongo)
+    reporte = {
+        "usuario_id": usuario["_id"],
+        "motivo": random.choice(motivos_reporte),
+        "descripcion": fake.paragraph(),
+        "estado": random.choice(estados_reporte),
+        "fecha_creacion": fake.date_time_between(start_date="-30d"),
+        "ultima_actualizacion": fake.date_time_between(start_date="-15d"),
+        "prioridad": random.choice(["baja", "media", "alta"])
+    }
+    reportes.append(reporte)
+mongo_db.reportes.insert_many(reportes)
+
+# Actividades de usuario
+print("Generando actividades de usuario...")
+tipos_actividad = ["login", "logout", "apuesta_creada", "deposito", "retiro", "perfil_actualizado"]
+actividades = []
+for usuario in usuarios_mongo:
+    num_actividades = random.randint(5, 20)
+    for _ in range(num_actividades):
+        actividad = {
+            "usuario_id": usuario["_id"],
+            "tipo": random.choice(tipos_actividad),
+            "fecha": fake.date_time_between(start_date=usuario["fecha_registro"]),
+            "detalles": {
+                "ip": fake.ipv4(),
+                "dispositivo": fake.user_agent(),
+                "ubicacion": fake.city()
+            }
+        }
+        actividades.append(actividad)
+mongo_db.actividades_usuario.insert_many(actividades)
+
+# Recompensas diarias
+print("Generando recompensas diarias...")
+tipos_recompensa = ["bono_deposito", "apuesta_gratis", "giros_gratis", "cashback", "puntos_vip"]
+recompensas = []
+for usuario in random.sample(usuarios_mongo, len(usuarios_mongo) // 2):  # 50% de usuarios
+    for _ in range(random.randint(1, 5)):
+        fecha_otorgado = fake.date_time_between(start_date="-30d")
+        # Convertir fecha_expiracion a datetime en lugar de date
+        fecha_expiracion = datetime.combine(
+            fake.future_date(),
+            datetime.min.time()
+        )
+        
+        recompensa = {
+            "usuario_id": usuario["_id"],
+            "tipo": random.choice(tipos_recompensa),
+            "valor": round(random.uniform(5, 100), 2),
+            "fecha_otorgado": fecha_otorgado,
+            "fecha_expiracion": fecha_expiracion,  # Ahora es datetime
+            "reclamado": random.choice([True, False]),
+            "condiciones": {
+                "apuesta_minima": random.randint(10, 50),
+                "rollover": random.randint(1, 5)
+            }
+        }
+        recompensas.append(recompensa)
+mongo_db.recompensas_diarias.insert_many(recompensas)
+
+# Mensajes de soporte
+print("Generando mensajes de soporte...")
+categorias_soporte = ["tecnico", "financiero", "cuenta", "apuestas", "promociones"]
+mensajes = []
+for _ in range(NUM_USUARIOS // 3):  # 1/3 de usuarios con tickets de soporte
+    usuario = random.choice(usuarios_mongo)
+    fecha_inicial = fake.date_time_between(start_date="-60d")
+    
+    ticket = {
+        "usuario_id": usuario["_id"],
+        "categoria": random.choice(categorias_soporte),
+        "estado": random.choice(["abierto", "en_proceso", "resuelto", "cerrado"]),
+        "fecha_creacion": fecha_inicial,
+        "mensajes": [
+            {
+                "texto": fake.paragraph(),
+                "fecha": fecha_inicial,
+                "tipo": "usuario"
+            }
+        ]
+    }
+    
+    # Agregar respuestas al ticket
+    num_respuestas = random.randint(1, 4)
+    for i in range(num_respuestas):
+        fecha_respuesta = fecha_inicial + timedelta(hours=random.randint(1, 48))
+        mensaje = {
+            "texto": fake.paragraph(),
+            "fecha": fecha_respuesta,
+            "tipo": "soporte" if i % 2 == 0 else "usuario"
+        }
+        ticket["mensajes"].append(mensaje)
+    
+    mensajes.append(ticket)
+mongo_db.mensajes_soporte.insert_many(mensajes)
+
+# Cerrar conexión MongoDB
+print("Cerrando conexión con MongoDB...")
+mongo_client.close()
+
+print(f"""
+¡Datos generados exitosamente!
+Resumen final:
+PostgreSQL:
+- Usuarios: {NUM_USUARIOS}
+- Eventos: {NUM_EVENTOS}
+- Mercados: {len(mercado_ids)}
+- Apuestas: {NUM_APUESTAS}
+
+MongoDB:
+- Notificaciones: {len(notificaciones)}
+- Reportes: {len(reportes)}
+- Actividades: {len(actividades)}
+- Recompensas: {len(recompensas)}
+- Tickets soporte: {len(mensajes)}
+""")
+
 cur.close()
 conn.close()
 

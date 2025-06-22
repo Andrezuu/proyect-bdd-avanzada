@@ -9,7 +9,7 @@ echo [PostgreSQL] Ejecutando archivos SQL...
 for %%F in (init views functions procedures triggers indexes hashing) do (
     echo [PostgreSQL] %%F.sql
     docker cp postgres/%%F.sql apuestas_postgres_primary:/tmp/%%F.sql
-    docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/%%F.sql" 
+    docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/%%F.sql" 1>nul
     if "!FIRST_RUN!"=="1" (
         echo [PostgreSQL] Ejecutando init_data.py...
         python postgres/init_data.py
