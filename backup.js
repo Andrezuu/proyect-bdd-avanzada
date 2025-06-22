@@ -5,16 +5,17 @@ const dayjs = require("dayjs");
 
 dotenv.config();
 const job = new cron.CronJob(
-  "*/1 * * * *", // cronTime
+  "*/1 * * * *",
   function () {
     console.log("Creating backup");
-    const dockerUser = process.env.DOCKER_USER || "postgres"
+    const dockerUser = process.env.DOCKER_USER || "postgres";
     const dockerContainer = process.env.DOCKER_CONTAINER || "apuestas_postgres";
     const user = process.env.DB_USER || "postgres";
+    const password = process.env.DB_PASSWORD; // Corregido de DB.PASSWORD a DB_PASSWORD
     const database = process.env.DB_NAME || "apuestas_db";
     const folder = process.env.BACKUP_FOLDER || "/tmp";
     const fileName = `backup_${dayjs().format("YYYYMMDD_HHmmss")}.dump`;
-    const backupCommand = `docker exec -u ${dockerUser} ${dockerContainer} \
+    const backupCommand = `docker exec -u ${dockerUser} -e PGPASSWORD=${password} ${dockerContainer} \
          pg_dump -U ${user} -F c -d ${database} -f ${folder}/${fileName}`;
     const copyCommand = `docker cp ${dockerContainer}:/tmp/${fileName} ./backups/${fileName}`;
     exec(backupCommand, (error, stdout, stderr) => {
