@@ -11,7 +11,7 @@ conn = psycopg2.connect(
     host="localhost",
     database="apuestas_db",
     user="postgres",
-    password=""
+    password="postgres_password"
 )
 cur = conn.cursor()
 
