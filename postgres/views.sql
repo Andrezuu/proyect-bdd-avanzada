@@ -38,8 +38,6 @@ SELECT
   nombre_evento,
   deporte,
   fecha,
-  resultado
 FROM eventos
-WHERE resultado IS NOT NULL;
 
 SELECT * FROM vista_eventos_finalizados;

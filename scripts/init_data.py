@@ -37,9 +37,9 @@ print("Iniciando generación de datos...")
 # ---------------------
 print("Limpiando datos existentes...")
 tables_to_clear = [
-    'logs_json', 'historial_apuestas', 'evento_patrocinadores', 'patrocinadores',
+    'logs_json', 'evento_patrocinadores', 'patrocinadores',
     'evento_equipos', 'equipos', 'transacciones', 'apuestas', 'mercados',
-    'comentarios_eventos', 'eventos_categorias', 'eventos', 'categorias', 
+     'eventos_categorias', 'eventos', 'categorias', 
     'metodos_pago', 'usuario_rol', 'roles', 'usuarios'
 ]
 
@@ -108,28 +108,10 @@ for _ in range(NUM_USUARIOS // 2):  # 50% de usuarios tienen métodos de pago
     user_id = random.choice(usuarios_ids)
     tipo = random.choice(tipos_pago)
     
-    if tipo.startswith('tarjeta'):
-        detalles = {
-            "numero": fake.credit_card_number(),
-            "titular": fake.name(),
-            "expiracion": fake.credit_card_expire(),
-            "cvv": fake.credit_card_security_code()
-        }
-    elif tipo == 'paypal':
-        detalles = {
-            "email": fake.email(),
-            "verificado": random.choice([True, False])
-        }
-    else:
-        detalles = {
-            "cuenta": fake.bban(),
-            "banco": fake.company()
-        }
-    
     cur.execute("""
-        INSERT INTO metodos_pago (id_usuario, tipo, detalles, activo)
-        VALUES (%s, %s, %s, %s)
-    """, (user_id, tipo, json.dumps(detalles), random.choice([True, True, False])))
+        INSERT INTO metodos_pago (id_usuario, tipo, activo)
+        VALUES (%s, %s, %s)
+    """, (user_id, tipo, random.choice([True, True, False])))
 
 # ---------------------
 # EQUIPOS
@@ -199,27 +181,14 @@ for i in range(NUM_EVENTOS):
     else:  # finalizado o cancelado
         fecha_evento = fake.past_datetime(start_date='-30d')
     
-    # Resultado del evento
-    if estado == 'finalizado':
-        resultado = {
-            "marcador_local": random.randint(0, 5),
-            "marcador_visitante": random.randint(0, 5),
-            "estadisticas": {
-                "posesion_local": random.randint(30, 70),
-                "posesion_visitante": random.randint(30, 70)
-            }
-        }
-    else:
-        resultado = {}
     
     cur.execute("""
-        INSERT INTO eventos (nombre_evento, deporte, fecha, resultado, estado)
-        VALUES (%s, %s, %s, %s, %s) RETURNING id_evento
+        INSERT INTO eventos (nombre_evento, deporte, fecha,  estado)
+        VALUES (%s, %s, %s, %s) RETURNING id_evento
     """, (
         f"{fake.catch_phrase()} - {deporte}",
         deporte,
         fecha_evento,
-        json.dumps(resultado),
         estado
     ))
     id_evento = cur.fetchone()[0]
@@ -238,9 +207,6 @@ for i in range(NUM_EVENTOS):
         equipos_evento = random.sample(equipos_deporte, 2)
         for idx, equipo_id in enumerate(equipos_evento):
             puntuacion = 0
-            if estado == 'finalizado' and resultado:
-                puntuacion = resultado.get('marcador_local', 0) if idx == 0 else resultado.get('marcador_visitante', 0)
-            
             cur.execute("""
                 INSERT INTO evento_equipos (id_evento, id_equipo, es_local, puntuacion)
                 VALUES (%s, %s, %s, %s)
@@ -286,43 +252,6 @@ for i in range(NUM_EVENTOS):
             VALUES (%s, %s, %s, %s) RETURNING id_mercado
         """, (id_evento, tipo_mercado, cuota, estado_mercado))
         mercado_ids.append(cur.fetchone()[0])
-
-# ---------------------
-# COMENTARIOS DE EVENTOS
-# ---------------------
-print(f"Insertando {NUM_COMENTARIOS} comentarios...")
-comentarios_ejemplo = [
-    "¡Qué gran partido!", "Esperando un buen resultado", "El equipo local se ve fuerte",
-    "Creo que será un empate", "¡Vamos mi equipo!", "Partido muy reñido",
-    "Excelente cuota para apostar", "No me convence este mercado", "El árbitro está sesgado", "Esperando a que algo suceda... 🐱‍👤", 
-     "Espero que no haya sorpresas", "Marcalo", "Necesitas algo?"
-]
-
-# Para evitar conflictos de PRIMARY KEY, solo insertamos un comentario por usuario-evento
-comentarios_insertados = set()
-for i in range(NUM_COMENTARIOS):
-    if i % 1000 == 0:
-        print(f"  Comentarios: {i}/{NUM_COMENTARIOS}")
-    
-    # Generar combinación única de usuario-evento
-    max_intentos = 10
-    for _ in range(max_intentos):
-        user_id = random.choice(usuarios_ids)
-        evento_id = random.choice(evento_ids)
-        if (user_id, evento_id) not in comentarios_insertados:
-            comentarios_insertados.add((user_id, evento_id))
-            break
-    else:
-        continue  # Si no se pudo encontrar una combinación única, saltar
-    
-    cur.execute("""
-        INSERT INTO comentarios_eventos (id_usuario, id_evento, comentario)
-        VALUES (%s, %s, %s)
-    """, (
-        user_id,
-        evento_id,
-        random.choice(comentarios_ejemplo) + " " + fake.sentence(),
-    ))
 
 # ---------------------
 # APUESTAS (30,000 registros)
@@ -406,25 +335,6 @@ for i in range(NUM_TRANSACCIONES):
     ))
 
 # ---------------------
-# HISTORIAL DE APUESTAS (JSON)
-# ---------------------
-print("Insertando historiales de apuestas...")
-for user_id in random.sample(usuarios_ids, NUM_USUARIOS // 3):  # 1/3 de usuarios
-    historial = {
-        "total_apuestas": random.randint(1, 100),
-        "total_ganado": round(random.uniform(0, 5000), 2),
-        "total_perdido": round(random.uniform(0, 3000), 2),
-        "deporte_favorito": random.choice(deportes),
-        "racha_actual": random.randint(-5, 10),
-        "mejor_racha": random.randint(1, 15)
-    }
-    
-    cur.execute("""
-        INSERT INTO historial_apuestas (id_usuario, historial)
-        VALUES (%s, %s)
-    """, (user_id, json.dumps(historial)))
-
-# ---------------------
 # LOGS JSON
 # ---------------------
 print("Insertando logs del sistema...")
@@ -433,36 +343,10 @@ tipos_log = ['login', 'apuesta_creada', 'deposito', 'retiro', 'error_sistema']
 for _ in range(1000):
     tipo_log = random.choice(tipos_log)
     
-    if tipo_log == 'login':
-        datos = {
-            "id_usuario": random.choice(usuarios_ids),
-            "ip": fake.ipv4(),
-            "user_agent": fake.user_agent(),
-            "exitoso": random.choice([True, False])
-        }
-    elif tipo_log == 'apuesta_creada':
-        datos = {
-            "id_usuario": random.choice(usuarios_ids),
-            "id_apuesta": random.randint(1, NUM_APUESTAS),
-            "monto": round(random.uniform(5, 200), 2)
-        }
-    elif tipo_log in ['deposito', 'retiro']:
-        datos = {
-            "id_usuario": random.choice(usuarios_ids),
-            "monto": round(random.uniform(20, 500), 2),
-            "método": random.choice(['tarjeta', 'paypal', 'transferencia'])
-        }
-    else:  # error_sistema
-        datos = {
-            "error": fake.sentence(),
-            "modulo": random.choice(['apuestas', 'pagos', 'usuarios', 'eventos']),
-            "severidad": random.choice(['low', 'medium', 'high', 'critical'])
-        }
-    
     cur.execute("""
-        INSERT INTO logs_json (tipo_log, datos)
-        VALUES (%s, %s)
-    """, (tipo_log, json.dumps(datos)))
+        INSERT INTO logs_json (tipo_log)
+        VALUES (%s)
+    """, (tipo_log,))
 
 # ---------------------
 # CONFIRMAR Y CERRAR
@@ -479,22 +363,92 @@ mongo_db = mongo_client["proyecto"]
 
 # Limpiar colecciones existentes
 print("Limpiando colecciones de MongoDB...")
-for collection in ['notificaciones', 'reportes', 'actividades_usuario', 'recompensas_diarias', 'mensajes_soporte']:
+for collection in mongo_db.list_collection_names():
     mongo_db[collection].drop()
 
-# Mapeo de usuarios PostgreSQL a MongoDB
-print("Sincronizando usuarios con PostgreSQL...")
+# Usuarios con preferencias embebidas
+print("Sincronizando usuarios con preferencias...")
 usuarios_mongo = []
 for user_id in usuarios_ids:
     cur.execute("SELECT nombre, email, created_at FROM usuarios WHERE id_usuario = %s", (user_id,))
     pg_user = cur.fetchone()
     usuario_mongo = {
-        "_id": user_id,  # Usar el mismo ID que en PostgreSQL
+        "pg_id": user_id,
         "nombre": pg_user[0],
         "email": pg_user[1],
-        "fecha_registro": pg_user[2]
+        "fecha_registro": pg_user[2],
+        "preferencias": {
+            "idioma": random.choice(["es", "en", "pt"]),
+            "deporte_favorito": random.choice(deportes),
+            "notificaciones": random.choice([True, False])
+        }
     }
     usuarios_mongo.append(usuario_mongo)
+mongo_db.usuarios.insert_many(usuarios_mongo)
+
+# Métodos de pago detalles
+print("Generando detalles de métodos de pago...")
+metodos_pago = []
+cur.execute("SELECT id_metodo, id_usuario FROM metodos_pago")
+for metodo in cur.fetchall():
+    tipo = random.choice(['tarjeta_credito', 'paypal', 'transferencia'])
+    if tipo == 'tarjeta_credito':
+        detalles = {
+            "numero": fake.credit_card_number(),
+            "titular": fake.name(),
+            "expiracion": fake.credit_card_expire()
+        }
+    elif tipo == 'paypal':
+        detalles = {"email": fake.email()}
+    else:
+        detalles = {"cuenta": fake.bban()}
+    
+    metodos_pago.append({
+        "pg_id": metodo[0],
+        "usuario_id": metodo[1],
+        "detalles": detalles
+    })
+mongo_db.metodos_pago_detalles.insert_many(metodos_pago)
+
+# Resultados de eventos
+print("Generando resultados de eventos...")
+eventos_resultado = []
+cur.execute("SELECT id_evento FROM eventos WHERE estado = 'finalizado'")
+for evento in cur.fetchall():
+    resultado = {
+        "marcador_local": random.randint(0, 5),
+        "marcador_visitante": random.randint(0, 5),
+        "estadisticas": {
+            "posesion": random.randint(30, 70),
+            "tiros": random.randint(5, 20)
+        }
+    }
+    eventos_resultado.append({
+        "pg_id": evento[0],
+        "resultado": resultado
+    })
+mongo_db.eventos_resultado.insert_many(eventos_resultado)
+
+# Agregar después de eventos_resultado.insert_many()
+
+# Comentarios de eventos
+print("Generando comentarios de eventos...")
+comentarios = []
+for evento in eventos_resultado:
+    num_comentarios = random.randint(1, 10)
+    for _ in range(num_comentarios):
+        usuario = random.choice(usuarios_mongo)
+        comentario = {
+            "evento_id": evento["pg_id"],
+            "usuario_id": usuario["pg_id"],
+            "texto": fake.paragraph(),
+            "fecha": fake.date_time_between(start_date="-30d"),
+            "likes": random.randint(0, 100),
+            "reportado": random.choice([True, False, False, False]),  # 25% probabilidad
+            "estado": "activo"
+        }
+        comentarios.append(comentario)
+mongo_db.comentarios_eventos.insert_many(comentarios)
 
 # Notificaciones
 print("Generando notificaciones...")
@@ -503,7 +457,7 @@ notificaciones = []
 for _ in range(NUM_USUARIOS * 3):  # 3 notificaciones promedio por usuario
     usuario = random.choice(usuarios_mongo)
     notificacion = {
-        "usuario_id": usuario["_id"],  # Ahora usa el mismo ID que PostgreSQL
+        "usuario_id": usuario["pg_id"],  # Ahora usa el mismo ID que PostgreSQL
         "mensaje": fake.sentence(),
         "tipo": random.choice(tipos_notificacion),
         "fecha": fake.date_time_between(start_date=usuario["fecha_registro"]),
@@ -520,7 +474,7 @@ reportes = []
 for _ in range(NUM_USUARIOS // 4):  # 25% de usuarios crean reportes
     usuario = random.choice(usuarios_mongo)
     reporte = {
-        "usuario_id": usuario["_id"],
+        "usuario_id": usuario["pg_id"],
         "motivo": random.choice(motivos_reporte),
         "descripcion": fake.paragraph(),
         "estado": random.choice(estados_reporte),
@@ -539,7 +493,7 @@ for usuario in usuarios_mongo:
     num_actividades = random.randint(5, 20)
     for _ in range(num_actividades):
         actividad = {
-            "usuario_id": usuario["_id"],
+            "usuario_id": usuario["pg_id"],
             "tipo": random.choice(tipos_actividad),
             "fecha": fake.date_time_between(start_date=usuario["fecha_registro"]),
             "detalles": {
@@ -565,7 +519,7 @@ for usuario in random.sample(usuarios_mongo, len(usuarios_mongo) // 2):  # 50% d
         )
         
         recompensa = {
-            "usuario_id": usuario["_id"],
+            "usuario_id": usuario["pg_id"],
             "tipo": random.choice(tipos_recompensa),
             "valor": round(random.uniform(5, 100), 2),
             "fecha_otorgado": fecha_otorgado,
@@ -588,7 +542,7 @@ for _ in range(NUM_USUARIOS // 3):  # 1/3 de usuarios con tickets de soporte
     fecha_inicial = fake.date_time_between(start_date="-60d")
     
     ticket = {
-        "usuario_id": usuario["_id"],
+        "usuario_id": usuario["pg_id"],
         "categoria": random.choice(categorias_soporte),
         "estado": random.choice(["abierto", "en_proceso", "resuelto", "cerrado"]),
         "fecha_creacion": fecha_inicial,
@@ -620,20 +574,12 @@ print("Cerrando conexión con MongoDB...")
 mongo_client.close()
 
 print(f"""
-¡Datos generados exitosamente!
-Resumen final:
-PostgreSQL:
-- Usuarios: {NUM_USUARIOS}
-- Eventos: {NUM_EVENTOS}
-- Mercados: {len(mercado_ids)}
-- Apuestas: {NUM_APUESTAS}
-
-MongoDB:
-- Notificaciones: {len(notificaciones)}
-- Reportes: {len(reportes)}
-- Actividades: {len(actividades)}
-- Recompensas: {len(recompensas)}
-- Tickets soporte: {len(mensajes)}
+MongoDB datos generados:
+- Usuarios con preferencias: {len(usuarios_mongo)}
+- Métodos pago detalles: {len(metodos_pago)}
+- Resultados eventos: {len(eventos_resultado)}
+- Comentarios eventos: {len(comentarios)}
+- Otros datos relacionales actualizados
 """)
 
 cur.close()

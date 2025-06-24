@@ -65,21 +65,10 @@ create table
     metodos_pago (
         id_metodo SERIAL PRIMARY KEY,
         id_usuario INT REFERENCES usuarios (id_usuario),
+        tipo TEXT,
         activo BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
-    );
-
-drop table if exists comentarios_eventos cascade;
-
-create table
-    comentarios_eventos (
-        id_usuario INT REFERENCES usuarios (id_usuario),
-        id_evento INT REFERENCES eventos (id_evento),
-        comentario TEXT,
-        created_at TIMESTAMP DEFAULT NOW (),
-        updated_at TIMESTAMP DEFAULT NOW (),
-        PRIMARY KEY (id_usuario, id_evento)
     );
 
 drop table if exists categorias cascade;
