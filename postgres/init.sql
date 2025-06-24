@@ -41,7 +41,6 @@ create table
         nombre_evento VARCHAR(100),
         deporte VARCHAR(50),
         fecha TIMESTAMP,
-        resultado JSONB,
         estado VARCHAR(20),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
@@ -66,10 +65,7 @@ create table
     metodos_pago (
         id_metodo SERIAL PRIMARY KEY,
         id_usuario INT REFERENCES usuarios (id_usuario),
-        tipo VARCHAR(50), -- tarjeta, paypal, etc.
-        detalles JSONB,
         activo BOOLEAN DEFAULT TRUE,
-        fecha_registro TIMESTAMP DEFAULT NOW (),
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
     );
@@ -214,7 +210,6 @@ create table
     logs_json (
         id BIGSERIAL,
         tipo_log VARCHAR(50),
-        datos JSONB,
         created_at TIMESTAMP DEFAULT NOW (),
         updated_at TIMESTAMP DEFAULT NOW ()
     )

@@ -12,7 +12,7 @@ for %%F in (init views functions procedures triggers indexes hashing) do (
     docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/%%F.sql" 1>nul
     if "!FIRST_RUN!"=="1" (
         echo [PostgreSQL] Ejecutando init_data.py...
-        python postgres/init_data.py
+        python init_data.py
         set FIRST_RUN=0
     )
 )
