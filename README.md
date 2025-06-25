@@ -21,7 +21,7 @@ Sistema de base de datos avanzado para gestión de apuestas deportivas, implemen
 | Base NoSQL | MongoDB | Comentarios, vistas embebidas, consultas agregadas |
 | Caché | Redis | Aceleración de consultas críticas |
 | Contenedores | Docker & Compose | Arquitectura distribuida y replicada |
-| Scripts | Python (`Faker`, `pymongo`) | Generación y carga de datos |
+| Scripts | Python (`Faker`, `pymongo`, `mysql-connector-python`, `psycopg2-binary` ) | Generación y carga de datos |
 | Automatización | Node.js | Scripts de backup/restore relacional |
 | Cliente DB | DBeaver | Visualización y prueba de conexiones |
 
@@ -70,7 +70,7 @@ docker-compose up -d
 5. **Instalar dependencias para MongoDB (solo si usarás los scripts Python)**
 
 ```bash
-pip install pymongo faker
+pip install pymongo faker psycopg2-binary mysql-connector-python
 ```
 6. **Cargar datos falsos (opcional)**
 
