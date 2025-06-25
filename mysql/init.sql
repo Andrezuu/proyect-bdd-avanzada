@@ -43,22 +43,6 @@ CREATE TABLE eventos_categorias (
     FOREIGN KEY (id_evento) REFERENCES eventos(id_evento) ON DELETE CASCADE
 );
 
-DROP TABLE IF EXISTS apuestas;
-CREATE TABLE apuestas (
-    id_apuesta INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario INT,
-    id_mercado INT,
-    monto DECIMAL(10, 2),
-    ganancia_esperada DECIMAL(10, 2),
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    estado_apuesta VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
-    FOREIGN KEY (id_mercado) REFERENCES mercados(id_mercado)
-);
-
-
 DROP TABLE IF EXISTS equipos;
 CREATE TABLE equipos (
     id_equipo INT AUTO_INCREMENT PRIMARY KEY,

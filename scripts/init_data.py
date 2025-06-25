@@ -4,6 +4,7 @@ from faker import Faker
 import random
 from datetime import datetime, timedelta
 import json
+import mysql.connector
 
 fake = Faker('es_ES')  # Usar datos en español
 
@@ -15,6 +16,15 @@ conn = psycopg2.connect(
     password="postgres_password"
 )
 cur = conn.cursor()
+
+# Conexión a MySQL
+mysql_conn = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="mysql_password",
+    database="apuestas_db"
+)
+mysql_cur = mysql_conn.cursor()
 
 # ---------------------
 # PARÁMETROS
@@ -36,15 +46,28 @@ print("Iniciando generación de datos...")
 # LIMPIAR DATOS EXISTENTES (OPCIONAL)
 # ---------------------
 print("Limpiando datos existentes...")
-tables_to_clear = [
-    'logs_json', 'evento_patrocinadores', 'patrocinadores',
-    'evento_equipos', 'equipos', 'transacciones', 'apuestas', 'mercados',
-     'eventos_categorias', 'eventos', 'categorias', 
-    'metodos_pago', 'usuario_rol', 'roles', 'usuarios'
+# PostgreSQL tables
+pg_tables_to_clear = [
+    'logs_json', 'transacciones', 'metodos_pago', 
+    'usuario_rol', 'roles', 'usuarios', 'apuestas'
 ]
 
-for table in tables_to_clear:
+for table in pg_tables_to_clear:
     cur.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE")
+
+# MySQL tables
+mysql_tables_to_clear = [
+    'evento_patrocinadores', 'patrocinadores',
+    'evento_equipos', 'equipos', 'mercados',
+    'eventos_categorias', 'eventos', 'categorias'
+]
+
+for table in mysql_tables_to_clear:
+    mysql_cur.execute(f"SET FOREIGN_KEY_CHECKS = 0")
+    mysql_cur.execute(f"TRUNCATE TABLE {table}")
+    mysql_cur.execute(f"SET FOREIGN_KEY_CHECKS = 1")
+
+mysql_conn.commit()
 
 # ---------------------
 # INSERCIÓN DE ROLES
@@ -62,14 +85,17 @@ categorias = ['Fútbol', 'Baloncesto', 'Tenis', 'Béisbol', 'Voleibol',
               'Hockey', 'Rugby', 'Cricket', 'Golf', 'Boxeo']
 categoria_ids = []
 for categoria in categorias:
-    cur.execute("INSERT INTO categorias (nombre) VALUES (%s) RETURNING id_categoria", (categoria,))
-    categoria_ids.append(cur.fetchone()[0])
+    mysql_cur.execute("INSERT INTO categorias (nombre) VALUES (%s)", (categoria,))
+    categoria_ids.append(mysql_cur.lastrowid)
+
+mysql_conn.commit()
 
 # ---------------------
 # USUARIOS
 # ---------------------
 print(f"Insertando {NUM_USUARIOS} usuarios...")
 usuarios_ids = []
+
 for i in range(NUM_USUARIOS):
     if i % 1000 == 0:
         print(f"  Usuarios: {i}/{NUM_USUARIOS}")
@@ -85,6 +111,8 @@ for i in range(NUM_USUARIOS):
         random.choice([True, True, True, False])  # 75% activos
     ))
     usuarios_ids.append(cur.fetchone()[0])
+
+print(f'Se registraron {len(usuarios_ids)} usuarios')
 
 # Asignar roles aleatorios a usuarios
 print("Asignando roles a usuarios...")
@@ -125,9 +153,9 @@ for i in range(NUM_EQUIPOS):
     if i % 50 == 0:
         print(f"  Equipos: {i}/{NUM_EQUIPOS}")
     
-    cur.execute("""
+    mysql_cur.execute("""
         INSERT INTO equipos (nombre, pais, deporte, logo_url, fecha_fundacion, activo)
-        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id_equipo
+        VALUES (%s, %s, %s, %s, %s, %s)
     """, (
         f"{fake.city()} {fake.word().title()}", 
         random.choice(paises),
@@ -136,7 +164,9 @@ for i in range(NUM_EQUIPOS):
         fake.date_between(start_date='-50y', end_date='-1y'),
         random.choice([True, True, True, False])  # 75% activos
     ))
-    equipo_ids.append(cur.fetchone()[0])
+    equipo_ids.append(mysql_cur.lastrowid)
+
+mysql_conn.commit()
 
 # ---------------------
 # PATROCINADORES
@@ -144,9 +174,9 @@ for i in range(NUM_EQUIPOS):
 print(f"Insertando {NUM_PATROCINADORES} patrocinadores...")
 patrocinador_ids = []
 for i in range(NUM_PATROCINADORES):
-    cur.execute("""
+    mysql_cur.execute("""
         INSERT INTO patrocinadores (nombre, logo_url, sitio_web, contacto_email, activo)
-        VALUES (%s, %s, %s, %s, %s) RETURNING id_patrocinador
+        VALUES (%s, %s, %s, %s, %s)
     """, (
         fake.company(),
         fake.image_url(width=300, height=100),
@@ -154,7 +184,9 @@ for i in range(NUM_PATROCINADORES):
         fake.company_email(),
         random.choice([True, True, False])  # 67% activos
     ))
-    patrocinador_ids.append(cur.fetchone()[0])
+    patrocinador_ids.append(mysql_cur.lastrowid)
+
+mysql_conn.commit()
 
 # ---------------------
 # EVENTOS Y MERCADOS
@@ -182,21 +214,21 @@ for i in range(NUM_EVENTOS):
         fecha_evento = fake.past_datetime(start_date='-30d')
     
     
-    cur.execute("""
+    mysql_cur.execute("""
         INSERT INTO eventos (nombre_evento, deporte, fecha,  estado)
-        VALUES (%s, %s, %s, %s) RETURNING id_evento
+        VALUES (%s, %s, %s, %s)
     """, (
         f"{fake.catch_phrase()} - {deporte}",
         deporte,
         fecha_evento,
         estado
     ))
-    id_evento = cur.fetchone()[0]
+    id_evento = mysql_cur.lastrowid
     evento_ids.append(id_evento)
     
     # Relacionar evento con categoría
     categoria_evento = random.choice(categoria_ids)
-    cur.execute("""
+    mysql_cur.execute("""
         INSERT INTO eventos_categorias (id_categoria, id_evento)
         VALUES (%s, %s)
     """, (categoria_evento, id_evento))
@@ -207,7 +239,7 @@ for i in range(NUM_EVENTOS):
         equipos_evento = random.sample(equipos_deporte, 2)
         for idx, equipo_id in enumerate(equipos_evento):
             puntuacion = 0
-            cur.execute("""
+            mysql_cur.execute("""
                 INSERT INTO evento_equipos (id_evento, id_equipo, es_local, puntuacion)
                 VALUES (%s, %s, %s, %s)
             """, (id_evento, equipo_id, idx == 0, puntuacion))
@@ -218,7 +250,7 @@ for i in range(NUM_EVENTOS):
         patrocinadores_evento = random.sample(patrocinador_ids, min(num_patrocinadores, len(patrocinador_ids)))
         
         for patrocinador_id in patrocinadores_evento:
-            cur.execute("""
+            mysql_cur.execute("""
                 INSERT INTO evento_patrocinadores (id_evento, id_patrocinador, tipo_patrocinio, 
                                                  monto, posicion_logo, fecha_inicio, fecha_fin)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -247,15 +279,18 @@ for i in range(NUM_EVENTOS):
         # Estado del mercado
         estado_mercado = True if estado in ['pendiente', 'en_vivo'] else random.choice([True, False])
         
-        cur.execute("""
+        mysql_cur.execute("""
             INSERT INTO mercados (id_evento, tipo_mercado, cuota, estado)
-            VALUES (%s, %s, %s, %s) RETURNING id_mercado
+            VALUES (%s, %s, %s, %s)
         """, (id_evento, tipo_mercado, cuota, estado_mercado))
-        mercado_ids.append(cur.fetchone()[0])
+        mercado_ids.append(mysql_cur.lastrowid)
+
+mysql_conn.commit()
 
 # ---------------------
 # APUESTAS (30,000 registros)
 # ---------------------
+
 print(f"Insertando {NUM_APUESTAS} apuestas...")
 estados_apuesta = ['pendiente', 'ganada', 'perdida', 'anulada']
 
@@ -270,19 +305,19 @@ for i in range(NUM_APUESTAS):
     monto = round(random.uniform(5, 500), 2)
     
     # Obtener la cuota del mercado
-    cur.execute("SELECT cuota FROM mercados WHERE id_mercado = %s", (mercado_id,))
-    cuota = cur.fetchone()[0]
+    mysql_cur.execute("SELECT cuota FROM mercados WHERE id_mercado = %s", (mercado_id,))
+    cuota = mysql_cur.fetchone()[0]
     
     # Ganancia esperada
     ganancia_esperada = round(monto * float(cuota), 2)
     
     # Estado de la apuesta (basado en si el evento ya finalizó)
-    cur.execute("""
+    mysql_cur.execute("""
         SELECT e.estado FROM eventos e 
         JOIN mercados m ON e.id_evento = m.id_evento 
         WHERE m.id_mercado = %s
     """, (mercado_id,))
-    estado_evento = cur.fetchone()[0]
+    estado_evento = mysql_cur.fetchone()[0]
     
     if estado_evento == 'finalizado':
         estado_apuesta = random.choices(['ganada', 'perdida'], weights=[30, 70])[0]
@@ -294,10 +329,13 @@ for i in range(NUM_APUESTAS):
     # Fecha de la apuesta
     fecha_apuesta = fake.date_time_between(start_date='-60d', end_date='now')
     
+    # Usar PostgreSQL para la inserción
     cur.execute("""
         INSERT INTO apuestas (id_usuario, id_mercado, monto, ganancia_esperada, fecha, estado_apuesta)
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (user_id, mercado_id, monto, ganancia_esperada, fecha_apuesta, estado_apuesta))
+
+mysql_conn.commit()
 
 # ---------------------
 # TRANSACCIONES
@@ -306,9 +344,25 @@ print(f"Insertando {NUM_TRANSACCIONES} transacciones...")
 tipos_transaccion = ['deposito', 'retiro', 'apuesta', 'ganancia']
 estados_transaccion = ['completada', 'pendiente', 'fallida', 'cancelada']
 
+# Obtener métodos de pago por usuario
+cur.execute("SELECT id_metodo, id_usuario FROM metodos_pago WHERE activo = true")
+metodos_pago_por_usuario = {}
+for metodo in cur.fetchall():
+    if metodo[1] not in metodos_pago_por_usuario:
+        metodos_pago_por_usuario[metodo[1]] = []
+    metodos_pago_por_usuario[metodo[1]].append(metodo[0])
+
 for i in range(NUM_TRANSACCIONES):
     if i % 2000 == 0:
         print(f"  Transacciones: {i}/{NUM_TRANSACCIONES}")
+    
+    # Seleccionar usuario y su método de pago
+    usuario_id = random.choice(usuarios_ids)
+    metodo_pago_id = None
+    
+    # Si el usuario tiene métodos de pago, seleccionar uno
+    if usuario_id in metodos_pago_por_usuario and metodos_pago_por_usuario[usuario_id]:
+        metodo_pago_id = random.choice(metodos_pago_por_usuario[usuario_id])
     
     tipo = random.choice(tipos_transaccion)
     
@@ -325,10 +379,11 @@ for i in range(NUM_TRANSACCIONES):
     estado = random.choices(estados_transaccion, weights=[80, 10, 7, 3])[0]
     
     cur.execute("""
-        INSERT INTO transacciones (id_usuario, tipo_transaccion, monto, estado)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO transacciones (id_usuario, id_metodo_pago, tipo_transaccion, monto, estado)
+        VALUES (%s, %s, %s, %s, %s)
     """, (
-        random.choice(usuarios_ids),
+        usuario_id,
+        metodo_pago_id,  # Puede ser None si el usuario no tiene métodos de pago
         tipo,
         monto,
         estado
@@ -366,17 +421,24 @@ print("Limpiando colecciones de MongoDB...")
 for collection in mongo_db.list_collection_names():
     mongo_db[collection].drop()
 
-# Usuarios con preferencias embebidas
+# Obtener datos de eventos de MySQL
+mysql_cur.execute("""
+    SELECT id_evento, nombre_evento, deporte, fecha, estado 
+    FROM eventos
+""")
+eventos_mysql = {row[0]: {"nombre": row[1], "deporte": row[2], "fecha": row[3], "estado": row[4]} 
+                for row in mysql_cur.fetchall()}
+
+# Usuarios con preferencias (desde PostgreSQL)
 print("Sincronizando usuarios con preferencias...")
 usuarios_mongo = []
-for user_id in usuarios_ids:
-    cur.execute("SELECT nombre, email, created_at FROM usuarios WHERE id_usuario = %s", (user_id,))
-    pg_user = cur.fetchone()
+cur.execute("SELECT id_usuario, nombre, email, created_at FROM usuarios")
+for user in cur.fetchall():
     usuario_mongo = {
-        "pg_id": user_id,
-        "nombre": pg_user[0],
-        "email": pg_user[1],
-        "fecha_registro": pg_user[2],
+        "pg_id": user[0],
+        "nombre": user[1],
+        "email": user[2],
+        "fecha_registro": user[3],
         "preferencias": {
             "idioma": random.choice(["es", "en", "pt"]),
             "deporte_favorito": random.choice(deportes),
@@ -386,12 +448,12 @@ for user_id in usuarios_ids:
     usuarios_mongo.append(usuario_mongo)
 mongo_db.usuarios.insert_many(usuarios_mongo)
 
-# Métodos de pago detalles
+# Métodos de pago detalles (desde PostgreSQL)
 print("Generando detalles de métodos de pago...")
 metodos_pago = []
-cur.execute("SELECT id_metodo, id_usuario FROM metodos_pago")
+cur.execute("SELECT id_metodo, id_usuario, tipo FROM metodos_pago")
 for metodo in cur.fetchall():
-    tipo = random.choice(['tarjeta_credito', 'paypal', 'transferencia'])
+    tipo = metodo[2]
     if tipo == 'tarjeta_credito':
         detalles = {
             "numero": fake.credit_card_number(),
@@ -406,28 +468,77 @@ for metodo in cur.fetchall():
     metodos_pago.append({
         "pg_id": metodo[0],
         "usuario_id": metodo[1],
+        "tipo": tipo,
         "detalles": detalles
     })
 mongo_db.metodos_pago_detalles.insert_many(metodos_pago)
 
-# Resultados de eventos
+# Resultados de eventos (desde MySQL)
 print("Generando resultados de eventos...")
 eventos_resultado = []
-cur.execute("SELECT id_evento FROM eventos WHERE estado = 'finalizado'")
-for evento in cur.fetchall():
+mysql_cur.execute("SELECT id_evento FROM eventos WHERE estado = 'finalizado'")
+for evento in mysql_cur.fetchall():
+    evento_id = evento[0]
+    
+    # Obtener equipos del evento
+    mysql_cur.execute("""
+        SELECT e.id_equipo, e.nombre, ee.es_local 
+        FROM evento_equipos ee
+        JOIN equipos e ON e.id_equipo = ee.id_equipo
+        WHERE ee.id_evento = %s
+    """, (evento_id,))
+    equipos = mysql_cur.fetchall()
+    
     resultado = {
-        "marcador_local": random.randint(0, 5),
-        "marcador_visitante": random.randint(0, 5),
+        "marcador": {
+            "local": random.randint(0, 5),
+            "visitante": random.randint(0, 5)
+        },
+        "equipos": {
+            "local": {"id": equipos[0][0], "nombre": equipos[0][1]} if equipos else None,
+            "visitante": {"id": equipos[1][0], "nombre": equipos[1][1]} if len(equipos) > 1 else None
+        },
         "estadisticas": {
             "posesion": random.randint(30, 70),
-            "tiros": random.randint(5, 20)
+            "tiros": random.randint(5, 20),
+            "faltas": random.randint(5, 25),
+            "tarjetas": {
+                "amarillas": random.randint(0, 8),
+                "rojas": random.randint(0, 2)
+            }
         }
     }
     eventos_resultado.append({
-        "pg_id": evento[0],
-        "resultado": resultado
+        "mysql_id": evento_id,
+        "resultado": resultado,
+        "fecha_actualizacion": eventos_mysql[evento_id]["fecha"]
     })
 mongo_db.eventos_resultado.insert_many(eventos_resultado)
+
+# Historial de apuestas (desde PostgreSQL)
+print("Generando historial de apuestas...")
+historial_apuestas = []
+cur.execute("""
+    SELECT a.id_apuesta, a.id_usuario, a.id_mercado, a.monto, a.estado_apuesta, 
+           a.fecha, a.ganancia_esperada
+    FROM apuestas a
+""")
+for apuesta in cur.fetchall():
+    historial = {
+        "pg_id": apuesta[0],
+        "usuario_id": apuesta[1],
+        "mercado_id": apuesta[2],
+        "monto": float(apuesta[3]),
+        "estado": apuesta[4],
+        "fecha_apuesta": apuesta[5],
+        "ganancia_esperada": float(apuesta[6]),
+        "resultado_final": {
+            "ganancia_real": float(apuesta[6]) if apuesta[4] == 'ganada' else 0,
+            "estado_pago": "completado" if apuesta[4] in ['ganada', 'perdida'] else "pendiente"
+        }
+    }
+    historial_apuestas.append(historial)
+mongo_db.historial_apuestas.insert_many(historial_apuestas)
 
 # Agregar después de eventos_resultado.insert_many()
 
@@ -439,7 +550,7 @@ for evento in eventos_resultado:
     for _ in range(num_comentarios):
         usuario = random.choice(usuarios_mongo)
         comentario = {
-            "evento_id": evento["pg_id"],
+            "evento_id": evento["mysql_id"],
             "usuario_id": usuario["pg_id"],
             "texto": fake.paragraph(),
             "fecha": fake.date_time_between(start_date="-30d"),
@@ -573,14 +684,9 @@ mongo_db.mensajes_soporte.insert_many(mensajes)
 print("Cerrando conexión con MongoDB...")
 mongo_client.close()
 
-print(f"""
-MongoDB datos generados:
-- Usuarios con preferencias: {len(usuarios_mongo)}
-- Métodos pago detalles: {len(metodos_pago)}
-- Resultados eventos: {len(eventos_resultado)}
-- Comentarios eventos: {len(comentarios)}
-- Otros datos relacionales actualizados
-""")
+# Cerrar conexiones MySQL
+mysql_cur.close()
+mysql_conn.close()
 
 cur.close()
 conn.close()
