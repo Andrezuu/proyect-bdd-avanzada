@@ -13,63 +13,155 @@ Sistema de base de datos avanzado para gestión de apuestas deportivas, implemen
 - [Instalación y Configuración](guides/installation.md)
 - [Backup y Restore](guides/backup-restore.md)
 
-## ⚙️ Tecnologías
+## 🧰 Tecnologías Utilizadas
 
-- PostgreSQL 15
-- MongoDB
-- Redis
-- Docker & Docker Compose
-- Python (Faker)
-- Node.js
+| Componente | Tecnología | Rol |
+| --- | --- | --- |
+| Base relacional | PostgreSQL 15 | Gestión estructurada y ACID |
+| Base NoSQL | MongoDB | Comentarios, vistas embebidas, consultas agregadas |
+| Caché | Redis | Aceleración de consultas críticas |
+| Contenedores | Docker & Compose | Arquitectura distribuida y replicada |
+| Scripts | Python (`Faker`, `pymongo`) | Generación y carga de datos |
+| Automatización | Node.js | Scripts de backup/restore relacional |
+| Cliente DB | DBeaver | Visualización y prueba de conexiones |
 
-## 🛠️ Estructura del Proyecto
+## 🚀 Guía de Inicio Rápido
 
-```
-proyecto-bdd/
-├── postgres/               # Scripts PostgreSQL
-│   ├── init.sql           # Esquema inicial
-│   ├── functions.sql      # Funciones PL/pgSQL
-│   ├── procedures.sql     # Procedimientos almacenados
-│   ├── triggers.sql       # Triggers automáticos
-│   ├── views.sql         # Vistas
-│   └── indexes.sql       # Índices optimizados
-│
-├── mongodb/              # Scripts MongoDB
-│   └── queries.js       # Consultas principales
-│
-├── scripts/             # Scripts de utilidad
-│   ├── backup.js       # Sistema de backups
-│   └── restore.js      # Restauración
-│
-└── docs/               # Documentación
-    ├── architecture/   # Diagramas y diseño
-    ├── guides/        # Guías de uso
-    └── development/   # Guías desarrollo
-```
+1. **Clona el repositorio**
 
-## 🚀 Inicio Rápido
-
-1. **Clonar el repositorio**
 ```bash
-git clone <repo-url>
-cd proyecto-bdd-avanzada
+git clone <https://github.com/Andrezuu/proyect-bdd-avanzada.git>
+cd proyect-bdd-avanzada
+
 ```
 
-2. **Configurar el entorno**
+---
+
+2. **Copia el archivo de configuración**
+
 ```bash
 cp .env.example .env
-# Editar .env según necesidades
+# Edita las variables necesarias (puerto, usuario, contraseña, etc.)
+
 ```
 
-3. **Levantar servicios**
+3. **Levanta todos los servicios**
+Este paso levantará:
+
+- PostgreSQL
+- MongoDB
+- Redis
+
+Ejecuta en la raíz del proyecto:
+
 ```bash
 docker-compose up -d
 ```
 
-4. **Inicializar base de datos**
+✅ Espera a que los contenedores estén 100% iniciados (puedes verificar con `docker ps`).
+
+4. **Inicializa la base de datos**
+
 ```bash
-./init_data.bat
+./init.bat
+# Ejecuta todos los scripts relacionales automáticamente
 ```
+
+5. **Instalar dependencias para MongoDB (solo si usarás los scripts Python)**
+
+```bash
+pip install pymongo faker
+```
+6. **Cargar datos falsos (opcional)**
+
+Puedes poblar la base de datos con datos de prueba ejecutando:
+
+```bash
+python scripts/init_data.py
+```
+
+---
+
+ 7. **Backup y Restore**
+
+- Para hacer un backup de PostgreSQL:
+
+```bash
+node scripts/backup.js
+```
+
+- Para restaurar un backup:
+
+```bash
+node scripts/restore.js
+```
+
+---
+
+## 🔌 Conexiones desde DBeaver
+
+### PostgreSQL
+
+- **Tipo de conexión**: PostgreSQL
+- **Host**: `localhost`
+- **Puerto**: `5432`
+- **Base de datos**: `apuestas`
+- **Usuario**: `postgres`
+- **Contraseña**: `postgres` (o la que configuraste)
+
+### MongoDB
+
+- **Tipo de conexión**: MongoDB
+- **Host**: `localhost`
+- **Puerto**: `27017`
+- **Base de datos**: `apuestas_mongo`
+
+## 📁 Estructura del Proyecto
+
+```
+proyect-bdd-avanzada/
+├── postgres/               # Scripts PostgreSQL
+│   ├── init.sql            # Tablas y relaciones
+│   ├── functions.sql       # Funciones PL/pgSQL
+│   ├── procedures.sql      # Procedimientos almacenados
+│   ├── triggers.sql        # Automatización de lógica
+│   ├── views.sql           # Consultas lógicas encapsuladas
+│   └── indexes.sql         # Índices para optimización
+│
+├── mongodb/                # Consultas MongoDB
+│   └── queries.js          # $lookup, $group, $unwind, etc.
+│
+├── scripts/
+│   ├── init_data.py        # Generación de datos con Faker
+│   ├── backup.js           # Backup PostgreSQL
+│   └── restore.js          # Restauración de backups
+│
+├── docs/
+│   ├── architecture/
+│   │   ├── diagrama_docker.md
+│   │   └── diagrama_redis.md
+│   ├── guides/
+│   │   ├── installation.md
+│   │   └── backup-restore.md
+│   └── development/
+│
+└── init.bat                # Automatiza ejecución de scripts SQL
+
+```
+
+---
+
+## 🧠 Funcionalidades y Técnicas Aplicadas
+
+- 🔐 **Seguridad**: Hash de contraseñas con `crypt` en PostgreSQL.
+- ⚙️ **Triggers**: Automatización de auditoría y validación.
+- 🔁 **Procedimientos almacenados**: Registro de apuestas con manejo de excepciones.
+- 📜 **Funciones**: Retorno de conjuntos y validaciones dinámicas.
+- 📦 **Redis**: TTL y caching de eventos activos.
+- ⚡ **MongoDB**: Consultas con operadores como `$unwind`, `$group`, `$match`.
+- 📈 **Optimización**: Uso de `EXPLAIN ANALYZE` y creación de índices personalizados.
+- 💾 **Backups**: Scripts automatizados para respaldo y recuperación.
+
 
 ## 📈 Características Principales
 
@@ -80,7 +172,10 @@ docker-compose up -d
 - Documentación completa
 
 ## 👥 Equipo
-
-- Andres Sanchez 
-- Alexia Marin 
-- Adrian Sanchez 
+Desarrollado por estudiantes de la Universidad Privada Boliviana - UPB
+> 
+> Materia: **Base de Datos Avanzada**
+> 
+- 🧑‍💻 **Andres Sanchez**
+- 🧑‍💻 **Alexia Marin**
+- 🧑‍💻 **Adrian Sanchez**
