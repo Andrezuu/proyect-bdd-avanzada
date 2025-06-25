@@ -177,5 +177,5 @@ Desarrollado por estudiantes de la Universidad Privada Boliviana - UPB
 > Materia: **Base de Datos Avanzada**
 > 
 - 🧑‍💻 **Andres Sanchez**
-- 🧑‍💻 **Alexia Marin**
+- 👩‍💻 **Alexia Marin**
 - 🧑‍💻 **Adrian Sanchez**
