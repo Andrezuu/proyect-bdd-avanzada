@@ -33,6 +33,8 @@ create table
         PRIMARY KEY (id_usuario, id_rol)
     );
 
+drop table if exists transacciones cascade;
+
 create table
     transacciones (
         id_transaccion SERIAL PRIMARY KEY,
