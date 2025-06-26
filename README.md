@@ -94,24 +94,6 @@ node scripts/restore.js
 
 ---
 
-## 🔌 Conexiones desde DBeaver
-
-### PostgreSQL
-
-- **Tipo de conexión**: PostgreSQL
-- **Host**: `localhost`
-- **Puerto**: `5432`
-- **Base de datos**: `apuestas`
-- **Usuario**: `postgres`
-- **Contraseña**: `postgres` (o la que configuraste)
-
-### MongoDB
-
-- **Tipo de conexión**: MongoDB
-- **Host**: `localhost`
-- **Puerto**: `27017`
-- **Base de datos**: `apuestas_mongo`
-
 ## 📁 Estructura del Proyecto
 
 ```
