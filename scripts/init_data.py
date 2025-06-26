@@ -423,6 +423,12 @@ try:
     mongo_client.admin.command('ping')
     print("✓ Conexión exitosa a MongoDB cluster")
     
+    config_db = mongo_client["config"]
+    config_db["settings"].update_one(
+        {"_id": "chunksize"},
+        {"$set": {"value": 1}},  # 1MB
+        upsert=True
+    )
     admin_db = mongo_client.admin
     mongo_db = mongo_client["proyecto"]
     
@@ -451,8 +457,8 @@ mysql_cur.execute("""
 eventos_mysql = {row[0]: {"nombre": row[1], "deporte": row[2], "fecha": row[3], "estado": row[4]} 
                 for row in mysql_cur.fetchall()}
 
-# Usuarios con preferencias (desde PostgreSQL)
-print("Sincronizando usuarios con preferencias...")
+# 1. Usuarios con preferencias (desde PostgreSQL) - SIN SHARDING
+print("Generando usuarios con preferencias...")
 usuarios_mongo = []
 cur.execute("SELECT id_usuario, nombre, email, created_at FROM usuarios")
 for user in cur.fetchall():
@@ -469,24 +475,18 @@ for user in cur.fetchall():
     }
     usuarios_mongo.append(usuario_mongo)
 
-# Insertar usuarios y configurar sharding
 if usuarios_mongo:
     mongo_db.usuarios.insert_many(usuarios_mongo)
-    try:
-        mongo_db.usuarios.create_index("pg_id")
-        print("✓ Índice creado en campo 'pg_id'")
+    print("✓ Colección 'usuarios' creada sin sharding")
 
-        admin_db.command("shardCollection", "proyecto.usuarios", key={"pg_id": 1})
-        print("✓ Sharding configurado para colección 'usuarios'")
-    except Exception as e:
-        print(f"⚠ Error configurando sharding usuarios: {e}")
-
-# Métodos de pago detalles (desde PostgreSQL)
-print("Generando detalles de métodos de pago...")
+# 2. Métodos de pago detalles (desde PostgreSQL) - CON SHARDING
+print("Generando métodos de pago detalles...")
 metodos_pago = []
 cur.execute("SELECT id_metodo, id_usuario, tipo FROM metodos_pago")
 for metodo in cur.fetchall():
     tipo = metodo[2]
+    detalles = {}
+    
     if tipo == 'tarjeta_credito':
         detalles = {
             "numero": fake.credit_card_number(),
@@ -494,9 +494,13 @@ for metodo in cur.fetchall():
             "expiracion": fake.credit_card_expire()
         }
     elif tipo == 'paypal':
-        detalles = {"email": fake.email()}
-    else:
-        detalles = {"cuenta": fake.bban()}
+        detalles = {
+            "email": fake.email()
+        }
+    elif tipo == 'transferencia':
+        detalles = {
+            "cuenta": fake.bban()
+        }
     
     metodos_pago.append({
         "pg_id": metodo[0],
@@ -507,76 +511,71 @@ for metodo in cur.fetchall():
 
 if metodos_pago:
     mongo_db.metodos_pago_detalles.insert_many(metodos_pago)
+    try:
+        mongo_db.metodos_pago_detalles.create_index({"usuario_id": "hashed"})
+        admin_db.command("shardCollection", "proyecto.metodos_pago_detalles", key={"usuario_id": "hashed"})
+        print("✓ Sharding configurado para colección 'metodos_pago_detalles'")
+    except Exception as e:
+        print(f"⚠ Error configurando sharding metodos_pago_detalles: {e}")
 
-# Resultados de eventos (desde MySQL)
-print("Generando resultados de eventos...")
+# 3. Eventos Resultados (desde MySQL) - CON SHARDING
+print("Generando eventos resultados...")
 eventos_resultado = []
 mysql_cur.execute("SELECT id_evento FROM eventos WHERE estado = 'finalizado'")
 for evento in mysql_cur.fetchall():
     evento_id = evento[0]
     
-    # Obtener equipos del evento
-    mysql_cur.execute("""
-        SELECT e.id_equipo, e.nombre, ee.es_local 
-        FROM evento_equipos ee
-        JOIN equipos e ON e.id_equipo = ee.id_equipo
-        WHERE ee.id_evento = %s
-    """, (evento_id,))
-    equipos = mysql_cur.fetchall()
-    
     resultado = {
-        "marcador": {
-            "local": random.randint(0, 5),
-            "visitante": random.randint(0, 5)
-        },
-        "equipos": {
-            "local": {"id": equipos[0][0], "nombre": equipos[0][1]} if equipos else None,
-            "visitante": {"id": equipos[1][0], "nombre": equipos[1][1]} if len(equipos) > 1 else None
-        },
-        "estadisticas": {
-            "posesion": random.randint(30, 70),
-            "tiros": random.randint(5, 20),
-            "faltas": random.randint(5, 25),
-            "tarjetas": {
-                "amarillas": random.randint(0, 8),
-                "rojas": random.randint(0, 2)
+        "pg_id": evento_id,
+        "resultado": {
+            "marcador_local": random.randint(0, 5),
+            "marcador_visitante": random.randint(0, 5),
+            "estadisticas": {
+                "posesion_local": random.randint(30, 70),
+                "posesion_visitante": random.randint(30, 70),
+                "tiros_local": random.randint(3, 15),
+                "tiros_visitante": random.randint(3, 15)
             }
         }
     }
-    eventos_resultado.append({
-        "mysql_id": evento_id,
-        "resultado": resultado,
-        "fecha_actualizacion": eventos_mysql[evento_id]["fecha"]
-    })
+    eventos_resultado.append(resultado)
 
 if eventos_resultado:
-    mongo_db.eventos_resultado.insert_many(eventos_resultado)
+    mongo_db.eventos_resultados.insert_many(eventos_resultado)
     try:
-        mongo_db.command("shardCollection", "proyecto.eventos_resultado", key={"mysql_id": 1})
-        print("✓ Sharding configurado para colección 'eventos_resultado'")
+        mongo_db.eventos_resultados.create_index({ "pg_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.eventos_resultados", key={"pg_id": "hashed"})
+        print("✓ Sharding configurado para colección 'eventos_resultados'")
     except Exception as e:
-        print(f"⚠ Error configurando sharding eventos_resultado: {e}")
+        print(f"⚠ Error configurando sharding eventos_resultados: {e}")
 
-# Historial de apuestas (desde PostgreSQL)
-print("Generando historial de apuestas...")
+# 4. Historial Apuestas (desde PostgreSQL) - CON SHARDING
+print("Generando historial apuestas...")
 historial_apuestas = []
 cur.execute("""
     SELECT a.id_apuesta, a.id_usuario, a.id_mercado, a.monto, a.estado_apuesta, 
            a.fecha, a.ganancia_esperada
     FROM apuestas a
 """)
+
+# Obtener evento_id para cada mercado
+mercado_evento_map = {}
+mysql_cur.execute("SELECT id_mercado, id_evento FROM mercados")
+for mercado in mysql_cur.fetchall():
+    mercado_evento_map[mercado[0]] = mercado[1]
+
 for apuesta in cur.fetchall():
+    evento_id = mercado_evento_map.get(apuesta[2], random.choice(list(eventos_mysql.keys())))
+    
     historial = {
-        "pg_id": apuesta[0],
         "usuario_id": apuesta[1],
-        "mercado_id": apuesta[2],
+        "evento_id": evento_id,
         "monto": float(apuesta[3]),
         "estado": apuesta[4],
         "fecha_apuesta": apuesta[5],
-        "ganancia_esperada": float(apuesta[6]),
         "resultado_final": {
             "ganancia_real": float(apuesta[6]) if apuesta[4] == 'ganada' else 0,
-            "estado_pago": "completado" if apuesta[4] in ['ganada', 'perdida'] else "pendiente"
+            "estado_pago": "pagado" if apuesta[4] == 'ganada' else "pendiente" if apuesta[4] == 'pendiente' else "cancelado"
         }
     }
     historial_apuestas.append(historial)
@@ -584,75 +583,227 @@ for apuesta in cur.fetchall():
 if historial_apuestas:
     mongo_db.historial_apuestas.insert_many(historial_apuestas)
     try:
-        mongo_db.command("shardCollection", "proyecto.historial_apuestas", key={"usuario_id": 1})
+        mongo_db.historial_apuestas.create_index({ "usuario_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.historial_apuestas", key={"usuario_id": "hashed"})
         print("✓ Sharding configurado para colección 'historial_apuestas'")
     except Exception as e:
         print(f"⚠ Error configurando sharding historial_apuestas: {e}")
 
-print("Generando comentarios de eventos...")
+# 5. Log JSON Datos (desde PostgreSQL) - CON SHARDING
+print("Generando log JSON datos...")
+logs_json = []
+cur.execute("SELECT id, tipo_log, created_at FROM logs_json")
+acciones = ['login', 'logout', 'apuesta_creada', 'deposito', 'retiro', 'error_sistema']
+resultados = ['exitoso', 'fallido', 'pendiente']
+
+for log in cur.fetchall():
+    log_data = {
+        "pg_id": log[0],
+        "fecha": log[2],
+        "datos": {
+            "usuario_id": random.choice([random.choice(usuarios_ids), None]),
+            "ip": fake.ipv4(),
+            "user_agent": fake.user_agent(),
+            "accion": random.choice(acciones),
+            "resultado": random.choice(resultados)
+        }
+    }
+    logs_json.append(log_data)
+
+if logs_json:
+    mongo_db.log_json_datos.insert_many(logs_json)
+    try:
+        mongo_db.log_json_datos.create_index({ "pg_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.log_json_datos", key={"pg_id": "hashed"})
+        print("✓ Sharding configurado para colección 'log_json_datos'")
+    except Exception as e:
+        print(f"⚠ Error configurando sharding log_json_datos: {e}")
+
+# 6. Notificaciones - CON SHARDING
+print("Generando notificaciones...")
+notificaciones = []
+tipos_notificacion = ["sistema", "promocion", "seguridad", "apuesta"]
+
+for usuario in usuarios_mongo:
+    num_notificaciones = random.randint(3, 12)
+    for _ in range(num_notificaciones):
+        notificacion = {
+            "usuario_id": usuario["pg_id"],
+            "mensaje": fake.text(max_nb_chars=200),
+            "tipo": random.choice(tipos_notificacion),
+            "fecha": fake.date_time_between(start_date="-30d"),
+            "leida": random.choice([True, False])
+        }
+        notificaciones.append(notificacion)
+
+if notificaciones:
+    mongo_db.notificaciones.insert_many(notificaciones)
+    try:
+        mongo_db.notificaciones.create_index({ "usuario_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.notificaciones", key={"usuario_id": "hashed"})
+        print("✓ Sharding configurado para colección 'notificaciones'")
+    except Exception as e:
+        print(f"⚠ Error configurando sharding notificaciones: {e}")
+
+# 7. Reportes - SIN SHARDING
+print("Generando reportes...")
+reportes = []
+tipos_reporte = ["bug", "fraude", "contenido", "tecnico"]
+estados_reporte = ["pendiente", "en_revision", "resuelto", "cerrado"]
+tipos_evidencia = ["imagen", "texto", "video"]
+
+for _ in range(5000):  # Generar 500 reportes
+    usuario_id = random.choice([u["pg_id"] for u in usuarios_mongo])
+    num_evidencias = random.randint(0, 3)
+    evidencias = []
+    
+    for _ in range(num_evidencias):
+        evidencias.append({
+            "tipo": random.choice(tipos_evidencia),
+            "url": fake.url()
+        })
+    
+    reporte = {
+        "usuario_id": usuario_id,
+        "tipo": random.choice(tipos_reporte),
+        "descripcion": fake.text(max_nb_chars=300),
+        "evidencias": evidencias,
+        "estado": random.choice(estados_reporte),
+        "fecha_creacion": fake.date_time_between(start_date="-60d")
+    }
+    reportes.append(reporte)
+
+if reportes:
+    mongo_db.reportes.insert_many(reportes)
+    mongo_db.reportes.create_index({ "usuario_id": "hashed" })
+    print("✓ Colección 'reportes' creada sin sharding")
+
+# 8. Mensajes Soporte - CON SHARDING
+print("Generando mensajes soporte...")
+mensajes_soporte = []
+categorias_soporte = ["tecnico", "financiero", "cuenta", "apuestas"]
+estados_soporte = ["abierto", "en_proceso", "resuelto", "cerrado"]
+
+for _ in range(8000):  # Generar 800 tickets de soporte
+    usuario_id = random.choice([u["pg_id"] for u in usuarios_mongo])
+    num_mensajes = random.randint(1, 8)
+    mensajes = []
+    
+    fecha_inicio = fake.date_time_between(start_date="-90d")
+    for i in range(num_mensajes):
+        mensaje = {
+            "texto": fake.paragraph(),
+            "fecha": fecha_inicio + timedelta(hours=random.randint(1, 48)),
+            "tipo": "usuario" if i % 2 == 0 else "soporte"
+        }
+        mensajes.append(mensaje)
+        fecha_inicio = mensaje["fecha"]
+    
+    soporte = {
+        "usuario_id": usuario_id,
+        "categoria": random.choice(categorias_soporte),
+        "estado": random.choice(estados_soporte),
+        "mensajes": mensajes
+    }
+    mensajes_soporte.append(soporte)
+
+if mensajes_soporte:
+    mongo_db.mensajes_soporte.insert_many(mensajes_soporte)
+    try:
+        mongo_db.mensajes_soporte.create_index({ "usuario_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.mensajes_soporte", key={"usuario_id": "hashed"})
+        print("✓ Sharding configurado para colección 'mensajes_soporte'")
+    except Exception as e:
+        print(f"⚠ Error configurando sharding mensajes_soporte: {e}")
+
+# 10. Recompensas Diarias - CON SHARDING
+print("Generando recompensas diarias...")
+recompensas = []
+tipos_recompensa = ["bono_deposito", "apuesta_gratis", "cashback"]
+
+for usuario in usuarios_mongo:
+    num_recompensas = random.randint(2, 8)
+    for _ in range(num_recompensas):
+        fecha_otorgado = fake.date_time_between(start_date="-60d")
+        recompensa = {
+            "usuario_id": usuario["pg_id"],
+            "tipo": random.choice(tipos_recompensa),
+            "valor": round(random.uniform(5, 100), 2),
+            "fecha_otorgado": fecha_otorgado,
+            "fecha_expiracion": fecha_otorgado + timedelta(days=random.randint(7, 30)),
+            "reclamado": random.choice([True, False]),
+            "condiciones": {
+                "apuesta_minima": round(random.uniform(10, 50), 2),
+                "rollover": random.randint(1, 5)
+            }
+        }
+        recompensas.append(recompensa)
+
+if recompensas:
+    mongo_db.recompensas_diarias.insert_many(recompensas)
+    try:
+        mongo_db.recompensas_diarias.create_index({ "usuario_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.recompensas_diarias", key={"usuario_id": "hashed"})
+        print("✓ Sharding configurado para colección 'recompensas_diarias'")
+    except Exception as e:
+        print(f"⚠ Error configurando sharding recompensas_diarias: {e}")
+
+# 11. Comentarios Eventos - CON SHARDING
+print("Generando comentarios eventos...")
 comentarios = []
-for evento in eventos_resultado:
-    num_comentarios = random.randint(1, 10)
+estados_comentario = ["activo", "oculto", "eliminado"]
+
+for evento_id in list(eventos_mysql.keys())[:400]:  # Comentarios para 400 eventos
+    num_comentarios = random.randint(1, 15)
     for _ in range(num_comentarios):
         usuario = random.choice(usuarios_mongo)
         comentario = {
-            "evento_id": evento["mysql_id"],
+            "evento_id": evento_id,
             "usuario_id": usuario["pg_id"],
             "texto": fake.paragraph(),
             "fecha": fake.date_time_between(start_date="-30d"),
-            "likes": random.randint(0, 100),
-            "reportado": random.choice([True, False, False, False]),
-            "estado": "activo"
+            "likes": random.randint(0, 50),
+            "reportado": random.choice([True, False, False, False, False]),
+            "estado": random.choices(estados_comentario, weights=[85, 10, 5])[0]
         }
         comentarios.append(comentario)
 
 if comentarios:
     mongo_db.comentarios_eventos.insert_many(comentarios)
-
-# Continúa con el resto de colecciones...
-print("Generando actividades de usuario...")
-tipos_actividad = ["login", "logout", "apuesta_creada", "deposito", "retiro", "perfil_actualizado"]
-actividades = []
-for usuario in usuarios_mongo:
-    num_actividades = random.randint(5, 20)
-    for _ in range(num_actividades):
-        actividad = {
-            "usuario_id": usuario["pg_id"],
-            "tipo": random.choice(tipos_actividad),
-            "fecha": fake.date_time_between(start_date=usuario["fecha_registro"]),
-            "detalles": {
-                "ip": fake.ipv4(),
-                "dispositivo": fake.user_agent(),
-                "ubicacion": fake.city()
-            }
-        }
-        actividades.append(actividad)
-
-if actividades:
-    mongo_db.actividades_usuario.insert_many(actividades)
     try:
-        mongo_db.command("shardCollection", "proyecto.actividades_usuario", key={"usuario_id": 1})
-        print("✓ Sharding configurado para colección 'actividades_usuario'")
+        mongo_db.comentarios_eventos.create_index({ "evento_id": "hashed" })
+        admin_db.command("shardCollection", "proyecto.comentarios_eventos", key={"evento_id": "hashed"})
+        print("✓ Sharding configurado para colección 'comentarios_eventos'")
     except Exception as e:
-        print(f"⚠ Error configurando sharding actividades_usuario: {e}")
+        print(f"⚠ Error configurando sharding comentarios_eventos: {e}")
 
 # Verificar el estado del sharding
 print("\n==== Estado del Sharding ====")
 try:
-    status = mongo_db.command("dbStats")
-    print(f"Base de datos: {status.get('db', 'N/A')}")
-    print(f"Colecciones: {status.get('collections', 'N/A')}")
     
-    # Verificar sharding por colección
-    shard_status = admin_db.command("listShards")
-    print(f"Shards disponibles: {len(shard_status.get('shards', []))}")
+    # Mostrar colecciones con y sin sharding
+    print("\n==== Resumen de Sharding ====")
+    stats = mongo_db.command("dbStats")
+    shards_stats = stats['raw']
+
+    for shard, info in shards_stats.items():
+        print(f"Shard: {shard}")
+        print(f"  Colecciones: {info['collections']}")
+        print(f"  Documentos: {info['objects']}")
+        print(f"  Tamaño de datos: {info['dataSize']/1e6:.2f} MB")
+        print(f"  Tamaño almacenamiento: {info['storageSize']/1e6:.2f} MB")
+        print(f"  Índices: {info['indexes']}")
+        print(f"  Tamaño índices: {info['indexSize']/1e6:.2f} MB")
+        print(f"  Espacio usado FS: {info['fsUsedSize']/1e9:.2f} GB")
+        print(f"  Espacio total FS: {info['fsTotalSize']/1e9:.2f} GB")
+        print()
+
     
 except Exception as e:
     print(f"Error obteniendo estado: {e}")
 
 print("Cerrando conexión con MongoDB...")
 mongo_client.close()
-
 # Cerrar conexiones MySQL
 mysql_cur.close()
 mysql_conn.close()

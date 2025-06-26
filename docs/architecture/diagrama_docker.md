@@ -1,59 +1,59 @@
 ```mermaid
 flowchart TD
-    subgraph DockerHost["Docker Host"]
-
+    subgraph DockerHost["Docker Compose"]
         subgraph PostgreSQL["PostgreSQL Cluster"]
-            Primary["postgres_primary<br/>Port: 5432<br/>Role: Master<br/>DB: apuestas_db<br/>User: replicator"]
-            Replica["postgres_replica<br/>Port: 5433<br/>Role: Slave<br/>Depends on: Primary"]
-
-            Primary -.->|"Replication Stream"| Replica
+            Primary["postgres_primary<br/>Port: 5432<br/>Role: Master<br/>DB: apuestas_db"]
+            Replica["postgres_replica<br/>Port: 5433<br/>Role: Slave"]
+            Primary -.->|"Relacion Master/Slave"| Replica
         end
-
-        subgraph Sharding["PostgreSQL Shards"]
-            Shard1["🔸 bicampeonas<br/>Port: 5434<br/>DB: apuestas_shard1<br/>Postgres 15"]
-            Shard2["🔹 casi_3<br/>Port: 5435<br/>DB: apuestas_shard2<br/>Postgres 15"]
+        subgraph MMySQL["MySQL Database"]
+            MySQL["mysql<br/>Port: 3306<br/>DB: apuestas_db"]
         end
-
-        subgraph NoSQL["NoSQL Database"]
-            MongoDB["mongodb<br/>Port: 27017<br/>MongoDB 6.0<br/>Auth: mongo/mongo"]
+        subgraph MongoDB["MongoDB Sharded Cluster"]
+            ConfigSvr["Config Server<br/>mongo_configsvr<br/>Port: 27019"]
+            Shard1["Shard 1<br/>mongo_shard1<br/>Port: 27018"]
+            Shard2["Shard 2<br/>mongo_shard2<br/>Port: 27018"]
+            Mongos["Router<br/>mongo_router<br/>Port: 27017"]
+            ConfigSvr --> Mongos
+            Shard1 --> Mongos
+            Shard2 --> Mongos
         end
-
-        subgraph Storage["Persistent Storage"]
-            PrimaryVol["primary_data<br/>/bitnami/postgresql"]
-            ReplicaVol["replica_data<br/>/bitnami/postgresql"]
-            Shard1Vol["shard1_data<br/>/var/lib/postgresql/data"]
-            Shard2Vol["shard2_data<br/>/var/lib/postgresql/data"]
-            MongoVol["mongo_data<br/>/data/db"]
+        subgraph Cache["Cache"]
+            Redis["redis<br/>Port: 6379"]
         end
     end
-
-    subgraph ExternalAccess["External Access"]
-        App1["Application<br/>:5432 → Primary"]
-        App2["Read Queries<br/>:5433 → Replica"]
-        App3["Shard Queries<br/>:5434 → Shard1"]
-        App4["Shard Queries<br/>:5435 → Shard2"]
-        App5["Document Queries<br/>:27017 → MongoDB"]
+    subgraph ExternalAccess["Base de Datos Distribuida"]
+        App1["Acceso a la Base de Datos"]
     end
-
-    Primary --> PrimaryVol
-    Replica --> ReplicaVol
-    Shard1 --> Shard1Vol
-    Shard2 --> Shard2Vol
-    MongoDB --> MongoVol
-
+    
+    %% Database Interconnections
+    Primary <--> Mongos
+    MySQL <--> Mongos
+    Replica <--> Mongos
+    
+    %% Redis caching from all databases
+    Primary --> Redis
+    Replica --> Redis
+    MySQL --> Redis
+    Mongos --> Redis
+    
+    %% External access
     App1 --> Primary
-    App2 --> Replica
-    App3 --> Shard1
-    App4 --> Shard2
-    App5 --> MongoDB
-
+    App1 --> Replica
+    App1 --> Mongos
+    App1 --> MySQL
+    App1 --> Redis
+    %% Styling
     style Primary fill:#ff6b6b,stroke:#333,stroke-width:3px,color:#fff
     style Replica fill:#4ecdc4,stroke:#333,stroke-width:2px,color:#fff
+    style MySQL fill:#00758f,stroke:#333,stroke-width:2px,color:#fff
+    style Redis fill:#a11e1e,stroke:#333,stroke-width:2px,color:#fff
+    style Mongos fill:#ffbe0b,stroke:#333,stroke-width:2px,color:#000
     style Shard1 fill:#45b7d1,stroke:#333,stroke-width:2px,color:#fff
     style Shard2 fill:#96ceb4,stroke:#333,stroke-width:2px,color:#fff
-    style MongoDB fill:#ffbe0b,stroke:#333,stroke-width:3px,color:#fff
+    style ConfigSvr fill:#ffd166,stroke:#333,stroke-width:2px,color:#000
     style PostgreSQL fill:#e8f4fd,stroke:#333,stroke-width:2px
-    style Sharding fill:#f0f8ff,stroke:#333,stroke-width:2px
-    style NoSQL fill:#fff8e1,stroke:#333,stroke-width:2px
-    style Storage fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style MongoDB fill:#f0f8ff,stroke:#333,stroke-width:2px
+    style Cache fill:#fef2f2,stroke:#333,stroke-width:2px
+    style MMySQL fill:#e6f9ff,stroke:#333,stroke-width:2px
 ```
