@@ -26,6 +26,9 @@ JOIN apuestas a ON u.id_usuario = a.id_usuario
 GROUP BY u.id_usuario, u.nombre
 ORDER BY total_apuestas DESC;
 
+CREATE INDEX idx_apuestas_id_usuario ON apuestas(id_usuario);
+CREATE INDEX idx_usuarios_id_usuario ON usuarios(id_usuario);
+
 -- 3. Función: get_apuestas_por_usuario
 EXPLAIN ANALYZE
 SELECT a.id_apuesta, e.nombre_evento, a.monto, a.ganancia_esperada
