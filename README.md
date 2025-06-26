@@ -60,19 +60,19 @@ docker-compose up -d
 ```
 
 ✅ Espera a que los contenedores estén 100% iniciados (puedes verificar con `docker ps`).
+4. **Instalar dependencias para MongoDB (solo si usarás los scripts Python)**
 
-4. **Inicializa la base de datos**
+```bash
+pip install pymongo faker psycopg2-binary mysql-connector-python
+```
+
+5. **Inicializa la base de datos**
 
 ```bash
 ./init.bat
 # Ejecuta todos los scripts relacionales automáticamente
 ```
 
-5. **Instalar dependencias para MongoDB (solo si usarás los scripts Python)**
-
-```bash
-pip install pymongo faker psycopg2-binary mysql-connector-python
-```
 6. **Cargar datos falsos (opcional)**
 
 Puedes poblar la base de datos con datos de prueba ejecutando:
@@ -85,7 +85,7 @@ python scripts/init_data.py
 
  7. **Backup y Restore**
 
-- Para hacer un backup de PostgreSQL:
+- Para hacer un backup de todo el sistema:
 
 ```bash
 node scripts/backup.js
