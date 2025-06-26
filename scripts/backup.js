@@ -1,5 +1,7 @@
 const { exec } = require("child_process");
 const path = require("path");
+const fs = require("fs");
+const cron = require("cron");
 
 const execCommand = (command) => {
   return new Promise((resolve, reject) => {
@@ -13,119 +15,152 @@ const execCommand = (command) => {
   });
 };
 
-const POSTGRES_CONTAINER =
-  process.env.POSTGRES_CONTAINER || "apuestas_postgres_primary";
-const POSTGRES_USER = process.env.POSTGRES_USER || "postgres";
-const POSTGRES_DB = process.env.POSTGRES_DB || "apuestas_db";
-const POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD || "postgres_password";
+const POSTGRES_CONTAINER = "apuestas_postgres_primary";
+const POSTGRES_USER = "postgres";
+const POSTGRES_DB = "apuestas_db";
+const POSTGRES_PASSWORD = "postgres_password";
 
-const MYSQL_CONTAINER = process.env.MYSQL_CONTAINER || "apuestas_mysql";
-const MYSQL_ROOT_PASSWORD = process.env.MYSQL_ROOT_PASSWORD || "mysql_password";
+const MYSQL_CONTAINER = "apuestas_mysql";
+const MYSQL_ROOT_PASSWORD = "mysql_password";
 
-const MONGO_ROUTER_CONTAINER =
-  process.env.MONGO_ROUTER_CONTAINER || "mongo_router";
-
-const REDIS_CONTAINER = process.env.REDIS_CONTAINER || "apuestas_redis";
+const MONGO_ROUTER_CONTAINER = "mongo_router";
+const REDIS_CONTAINER = "apuestas_redis";
+const ETL_CONTAINER = "apuestas_postgres_etl";
+const ETL_USER = "etl_user";
+const ETL_DB = "etl_db";
+const ETL_PASSWORD = "etl_password";
 
 const BACKUP_BASE_DIR = path.join(__dirname, "backups");
 
-const getLatestBackupFolder = async () => {
-  const ls = await execCommand(`ls -td ${BACKUP_BASE_DIR}/* | head -n 1`);
-  return ls;
+const generateBackupDir = () => {
+  const now = new Date();
+  const timestamp = now
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+/, "")
+    .replace("T", "_");
+  const backupDir = path.join(BACKUP_BASE_DIR, timestamp);
+
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+
+  return backupDir;
 };
 
-const restorePostgres = async () => {
-  console.log("Restaurando PostgreSQL...");
+const backupPostgres = async (backupDir) => {
+  console.log("Backing up PostgreSQL...");
+  const dumpFile = path.join(backupDir, "postgres_backup.dump");
+
   try {
-    const latestBackupDir = await getLatestBackupFolder();
-    const backupFile = path.join(latestBackupDir, "postgres_backup.dump");
-
     await execCommand(
-      `docker exec -u postgres -e PGPASSWORD=${POSTGRES_PASSWORD} ${POSTGRES_CONTAINER} sh -c "createdb -U ${POSTGRES_USER} ${POSTGRES_DB} 2>/dev/null || true"`
+      `docker exec -u postgres -e PGPASSWORD=${POSTGRES_PASSWORD} ${POSTGRES_CONTAINER} pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} -F c > "${dumpFile}"`
     );
-
-    await execCommand(
-      `docker cp ${backupFile} ${POSTGRES_CONTAINER}:/tmp/backup.dump`
-    );
-
-    await execCommand(
-      `docker exec -u postgres -e PGPASSWORD=${POSTGRES_PASSWORD} ${POSTGRES_CONTAINER} pg_restore --clean --if-exists -U ${POSTGRES_USER} -d ${POSTGRES_DB} /tmp/backup.dump`
-    );
-
-    await execCommand(
-      `docker exec -u postgres ${POSTGRES_CONTAINER} rm /tmp/backup.dump`
-    );
-
-    console.log("✅ PostgreSQL restaurado correctamente.");
-  } catch (err) {
-    console.error("Error restaurando PostgreSQL:", err);
+    console.log("✅ PostgreSQL backup completed.");
+  } catch (error) {
+    console.error("PostgreSQL backup error:", error);
+    throw error;
   }
 };
 
-const restoreMySQL = async () => {
-  console.log("Restaurando MySQL...");
+const backupMySQL = async (backupDir) => {
+  console.log("Backing up MySQL...");
+  const dumpFile = path.join(backupDir, "mysql_backup.sql");
+
   try {
-    const latestBackupDir = await getLatestBackupFolder();
-    const backupFile = path.join(latestBackupDir, "mysql_backup.sql");
-
-    const restoreCmd = `cat ${backupFile} | docker exec -i ${MYSQL_CONTAINER} sh -c "mysql -u root -p'${MYSQL_ROOT_PASSWORD}'"`;
-
-    await execCommand(restoreCmd);
-
-    console.log("✅ MySQL restaurado correctamente.");
-  } catch (err) {
-    console.error("Error restaurando MySQL:", err);
+    await execCommand(
+      `docker exec ${MYSQL_CONTAINER} mysqldump -u root -p${MYSQL_ROOT_PASSWORD} --all-databases > "${dumpFile}"`
+    );
+    console.log("✅ MySQL backup completed.");
+  } catch (error) {
+    console.error("MySQL backup error:", error);
+    throw error;
   }
 };
 
-async function restoreMongo() {
-  console.log("Restaurando MongoDB...");
+const backupMongo = async (backupDir) => {
+  console.log("Backing up MongoDB (sharded cluster)...");
+  const dumpFile = path.join(backupDir, "mongo_backup.archive");
+
   try {
-    const latestBackupDir = await getLatestBackupFolder();
-    const backupFile = path.join(latestBackupDir, "mongo_backup.archive");
-
     await execCommand(
-      `docker cp ${backupFile} ${MONGO_ROUTER_CONTAINER}:/data/backup.archive`
+      `docker exec ${MONGO_ROUTER_CONTAINER} mongodump --gzip --archive=/tmp/backup.archive`
     );
-
     await execCommand(
-      `docker exec ${MONGO_ROUTER_CONTAINER} mongorestore --drop --gzip --archive=/data/backup.archive`
+      `docker cp ${MONGO_ROUTER_CONTAINER}:/tmp/backup.archive "${dumpFile}"`
     );
-
     await execCommand(
-      `docker exec ${MONGO_ROUTER_CONTAINER} rm /data/backup.archive`
+      `docker exec ${MONGO_ROUTER_CONTAINER} rm /tmp/backup.archive`
     );
-
-    console.log("✅ MongoDB restaurado correctamente.");
-  } catch (err) {
-    console.error("Error restaurando MongoDB:", err);
+    console.log("✅ MongoDB backup completed.");
+  } catch (error) {
+    console.error("MongoDB backup error:", error);
+    throw error;
   }
-}
+};
 
-const restoreRedis = async () => {
-  console.log("Restaurando Redis...");
+const backupRedis = async (backupDir) => {
+  console.log("Backing up Redis...");
+  const dumpFile = path.join(backupDir, "redis_dump.rdb");
+
   try {
-    const latestBackupDir = await getLatestBackupFolder();
-    const backupFile = path.join(latestBackupDir, "redis_dump.rdb");
+    // Forzar un BGSAVE para asegurar que el dump.rdb esté actualizado
+    await execCommand(`docker exec ${REDIS_CONTAINER} redis-cli BGSAVE`);
+
+    // Esperar un poco para que termine el BGSAVE
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     await execCommand(
-      `docker cp ${backupFile} ${REDIS_CONTAINER}:/data/dump.rdb`
+      `docker cp ${REDIS_CONTAINER}:/data/dump.rdb "${dumpFile}"`
     );
+    console.log("✅ Redis backup completed.");
+  } catch (error) {
+    console.error("Redis backup error:", error);
+    throw error;
+  }
+};
 
-    await execCommand(`docker restart ${REDIS_CONTAINER}`);
+const backupETL = async (backupDir) => {
+  console.log("Backing up ETL...");
+  const dumpFile = path.join(backupDir, "etl_backup.dump");
 
-    console.log("✅ Redis restaurado correctamente.");
-  } catch (err) {
-    console.error("Error restaurando Redis:", err);
+  try {
+    await execCommand(
+      `docker exec -u postgres -e PGPASSWORD=${ETL_PASSWORD} ${ETL_CONTAINER} pg_dump -U ${ETL_USER} ${ETL_DB} -F c > "${dumpFile}"`
+    );
+    console.log("✅ ETL backup completed.");
+  } catch (error) {
+    console.error("ETL backup error:", error);
+    throw error;
   }
 };
 
 const main = async () => {
-  await restorePostgres();
-  await restoreMySQL();
-  await restoreMongo();
-  await restoreRedis();
-  console.log("🎉 Restauración completa.");
-};
+  try {
+    console.log("Backup job started.");
+    const backupDir = generateBackupDir();
+    console.log(
+      `Starting backup at ${path.basename(backupDir)} in folder ${backupDir}`
+    );
 
-main().catch(console.error);
+    await backupPostgres(backupDir);
+    await backupMySQL(backupDir);
+    await backupMongo(backupDir);
+    await backupRedis(backupDir);
+    await backupETL(backupDir);
+
+    console.log("🎉 All backups completed.");
+    console.log(`Backup saved in: ${backupDir}`);
+  } catch (error) {
+    console.error("Backup failed:", error);
+    process.exit(1);
+  }
+};
+const job = new cron.CronJob(
+  "* * * * *",
+  () => main().catch(console.error),
+  null
+);
+
+job.start();
+console.log("Backup job started.");
