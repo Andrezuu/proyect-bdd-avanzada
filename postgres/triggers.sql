@@ -95,3 +95,26 @@ EXECUTE FUNCTION validar_saldo_no_negativo();
 -- Pruebas
 --  UPDATE usuarios SET saldo = saldo + 1000 WHERE id_usuario = 1;
 --  UPDATE usuarios SET saldo = saldo - 10 WHERE id_usuario = 1;
+CREATE OR REPLACE FUNCTION desactivar_metodos_pago_usuario()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.estado = FALSE AND OLD.estado = TRUE THEN
+    UPDATE metodos_pago
+    SET activo = FALSE,
+        updated_at = NOW()
+    WHERE id_usuario = NEW.id_usuario;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_desactivar_metodos_pago
+AFTER UPDATE ON usuarios
+FOR EACH ROW
+WHEN (OLD.estado IS DISTINCT FROM NEW.estado)
+EXECUTE FUNCTION desactivar_metodos_pago_usuario();
+
+--SELECT count(*), id_usuario FROM metodos_pago group by id_usuario order by count(*) desc; el que mas tiene
+-- UPDATE usuarios SET estado = true WHERE id_usuario = ?; que este activo para desactivarlo luego
+-- UPDATE usuarios SET estado = false WHERE id_usuario = ?; y se dispare el trigger
+-- SELECT * FROM metodos_pago WHERE id_usuario = ?;
