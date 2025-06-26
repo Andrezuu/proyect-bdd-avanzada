@@ -1,6 +1,6 @@
 # 🏆 Sistema de Casa de Apuestas
 
-Sistema de base de datos avanzado para gestión de apuestas deportivas (OLIMPIADAS ![image](https://github.com/user-attachments/assets/200f2b25-0ece-4232-8ea7-808d06f8c3e1)), implementado con PostgreSQL y MongoDB.
+Sistema de base de datos avanzado para gestión de apuestas deportivas(OLIMPIADAS), implementado con PostgreSQL y MongoDB. ![image](https://github.com/user-attachments/assets/d4c25f18-33b0-4d1b-bb92-1a9b5593ef3a)
 
 ## 📚 Documentación
 
