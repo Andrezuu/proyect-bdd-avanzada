@@ -1,8 +1,17 @@
--- init_roles_mysql.sql
+-- Eliminar usuarios si existen
+DROP USER IF EXISTS 'juan'@'%';
+DROP USER IF EXISTS 'maria'@'%';
+DROP USER IF EXISTS 'admin1'@'%';
+
+-- Eliminar roles si existen
+DROP ROLE IF EXISTS admin;
+DROP ROLE IF EXISTS apostador;
+DROP ROLE IF EXISTS cajero;
 
 -- Crear roles
 CREATE ROLE admin;
 CREATE ROLE apostador;
+CREATE ROLE cajero;
 
 -- Permisos para admin (acceso total a la base de datos)
 GRANT ALL PRIVILEGES ON apuestas_db.* TO admin;

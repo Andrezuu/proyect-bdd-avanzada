@@ -1,9 +1,19 @@
+-- Eliminar usuarios si existen
+DROP USER IF EXISTS juan;
+DROP USER IF EXISTS maria;
+DROP USER IF EXISTS admin1;
+
+-- Eliminar roles si existen
+DROP ROLE IF EXISTS apostador;
+DROP ROLE IF EXISTS cajero;
+DROP ROLE IF EXISTS admin;
+
 -- Crear roles
 CREATE ROLE admin;
 CREATE ROLE apostador;
 CREATE ROLE cajero;
 
--- Permisos para admin (acceso total al esquema public)
+-- Permisos para admin
 GRANT ALL PRIVILEGES ON SCHEMA public TO admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO admin;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO admin;

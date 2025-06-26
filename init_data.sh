@@ -28,7 +28,7 @@ done
 
 # ---------- MYSQL ----------
 echo "[MySQL] Ejecutando archivos SQL..."
-for file in functions procedures triggers indexes roles; do
+for file in functions procedures triggers indexes; do
     if [ -f "mysql/${file}.sql" ]; then
         echo "[MySQL] ${file}.sql"
         docker cp "mysql/${file}.sql" apuestas_mysql:/tmp/${file}.sql
