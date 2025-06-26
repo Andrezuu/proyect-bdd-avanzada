@@ -112,6 +112,19 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+  ## Etl
+  apuestas_etl:
+    image: bitnami/postgresql:14
+    container_name: apuestas_postgres_etl
+    restart: always
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRESQL_USERNAME=etl_user
+      - POSTGRESQL_PASSWORD=etl_password
+      - POSTGRESQL_DATABASE=etl_db
+    volumes:
+      - etl_data:/bitnami/postgresql
 
 volumes:
   primary_data:
@@ -121,6 +134,7 @@ volumes:
   mongo_shard1:
   mongo_shard2:
   redis_data:
+  etl_data:
 
 networks:
   mongo-network:

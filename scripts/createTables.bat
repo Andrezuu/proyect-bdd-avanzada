@@ -24,9 +24,10 @@ timeout /t 10
 
 echo 5. Agregando shards al cluster...
 docker exec mongo_router mongosh --eval "sh.addShard('mongors1/mongo_shard1:27018')"
-
-
 docker exec mongo_router mongosh --eval "sh.addShard('mongors2/mongo_shard2:27018')"
+
+docker cp etl/init.sql apuestas_postgres_etl:/tmp/init.sql
+docker exec apuestas_postgres_etl sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/init.sql"
 
 echo Listo!
 pause
