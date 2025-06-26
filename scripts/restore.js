@@ -1,53 +1,108 @@
-const cron = require("cron");
 const { exec } = require("child_process");
-const dotenv = require("dotenv");
+const path = require("path");
+const fs = require("fs");
 
-dotenv.config();
-console.log("Restoring backup");
-const dockerUser = process.env.DOCKER_USER || "postgres";
-const dockerContainer = process.env.DOCKER_CONTAINER || "apuestas_postgres";
-const user = process.env.DB_USER || "postgres";
-const password = process.env.DB_PASSWORD;
-const folder = process.env.BACKUP_FOLDER || "/tmp";
-const restore_db = process.env.RESTORE_DB || "apuestas_db";
-const createRestoreDbCommand = `docker exec -u ${dockerUser} -e PGPASSWORD=${password} ${dockerContainer} sh -c "createdb -U ${user} ${restore_db} 2>/dev/null || true"`;
-
-exec(createRestoreDbCommand, (error, stderr) => {
-  console.log("Trying to create the database if it does not exist");
-  if (error) {
-    console.error(`Error executing command: ${error.message}`);
-    return;
-  }
-  if (stderr) {
-    console.error(`Error output: ${stderr}`);
-    return;
-  }
-  console.log("Database restored successfully or already exists.");
-});
-
-const restoreCommand = `docker exec -u ${dockerUser} -e PGPASSWORD=${password} ${dockerContainer} pg_restore --clean --if-exists -U ${user} -d ${restore_db} ${folder}/`;
-
-const latestBackupCommand = `docker exec -u ${dockerUser} -e PGPASSWORD=${password} ${dockerContainer} sh -c "ls -t ${folder} | head -n 1"`;
-exec(latestBackupCommand, (error, stdout, stderr) => {
-  if (error) {
-    console.error(`Error executing command: ${error.message}`);
-    return;
-  }
-  if (stderr) {
-    console.error(`Error output: ${stderr}`);
-    return;
-  }
-  const latestBackup = stdout;
-  console.log(`📁 Respaldo más reciente encontrado: ${latestBackup}`);
-  exec(`${restoreCommand}${latestBackup}`, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error executing restore command: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`Error output during restore: ${stderr}`);
-      return;
-    }
-    console.log("✅ Base de datos restaurada correctamente.");
+const execCommand = (command) => {
+  return new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        reject(stderr || error.message);
+        return;
+      }
+      resolve(stdout.trim());
+    });
   });
-});
+};
+
+// Variables
+const POSTGRES_CONTAINER = "apuestas_postgres_primary";
+const POSTGRES_USER = "postgres";
+const POSTGRES_DB = "apuestas_db";
+const POSTGRES_PASSWORD = "postgres_password";
+
+const MYSQL_CONTAINER = "apuestas_mysql";
+const MYSQL_ROOT_PASSWORD = "mysql_password";
+
+const MONGO_ROUTER_CONTAINER = "mongo_router";
+const REDIS_CONTAINER = "apuestas_redis";
+
+const BACKUP_BASE_DIR = path.join(__dirname, "backups");
+
+// Obtener último backup usando Node.js nativo
+const getLatestBackupFolder = () => {
+  if (!fs.existsSync(BACKUP_BASE_DIR)) {
+    throw new Error(`Directorio de backups no existe: ${BACKUP_BASE_DIR}`);
+  }
+  
+  const folders = fs.readdirSync(BACKUP_BASE_DIR)
+    .map(name => ({
+      name,
+      fullPath: path.join(BACKUP_BASE_DIR, name),
+      time: fs.statSync(path.join(BACKUP_BASE_DIR, name)).mtime.getTime()
+    }))
+    .filter(item => fs.statSync(item.fullPath).isDirectory())
+    .sort((a, b) => b.time - a.time);
+  
+  if (folders.length === 0) {
+    throw new Error("No se encontraron carpetas de backup");
+  }
+  
+  return folders[0].fullPath;
+};
+
+async function restorePostgres() {
+  console.log("Restaurando PostgreSQL...");
+  const latestBackupDir = getLatestBackupFolder();
+  const backupFile = path.join(latestBackupDir, "postgres_backup.dump");
+  
+  await execCommand(`docker cp "${backupFile}" ${POSTGRES_CONTAINER}:/tmp/backup.dump`);
+  await execCommand(`docker exec -e PGPASSWORD=${POSTGRES_PASSWORD} ${POSTGRES_CONTAINER} pg_restore --clean --if-exists -U ${POSTGRES_USER} -d ${POSTGRES_DB} /tmp/backup.dump`);
+  console.log("✅ PostgreSQL restaurado");
+}
+
+async function restoreMySQL() {
+  console.log("Restaurando MySQL...");
+  const latestBackupDir = getLatestBackupFolder();
+  const backupFile = path.join(latestBackupDir, "mysql_backup.sql");
+  
+  // En Windows usamos type, en Unix cat
+  const catCommand = process.platform === 'win32' ? 'type' : 'cat';
+  await execCommand(`${catCommand} "${backupFile}" | docker exec -i ${MYSQL_CONTAINER} mysql -u root -p${MYSQL_ROOT_PASSWORD}`);
+  console.log("✅ MySQL restaurado");
+}
+
+async function restoreMongo() {
+  console.log("Restaurando MongoDB...");
+  const latestBackupDir = getLatestBackupFolder();
+  const backupFile = path.join(latestBackupDir, "mongo_backup.archive");
+  
+  await execCommand(`docker cp "${backupFile}" ${MONGO_ROUTER_CONTAINER}:/tmp/backup.archive`);
+  // Excluir el directorio 'config' para sistemas sharded
+  await execCommand(`docker exec ${MONGO_ROUTER_CONTAINER} mongorestore --drop --gzip --archive=/tmp/backup.archive --nsExclude="config.*"`);
+  await execCommand(`docker exec ${MONGO_ROUTER_CONTAINER} rm /tmp/backup.archive`);
+  console.log("✅ MongoDB restaurado");
+}
+
+async function restoreRedis() {
+  console.log("Restaurando Redis...");
+  const latestBackupDir = getLatestBackupFolder();
+  const backupFile = path.join(latestBackupDir, "redis_dump.rdb");
+  
+  await execCommand(`docker cp "${backupFile}" ${REDIS_CONTAINER}:/data/dump.rdb`);
+  await execCommand(`docker restart ${REDIS_CONTAINER}`);
+  console.log("✅ Redis restaurado");
+}
+
+async function main() {
+  try {
+    await restorePostgres();
+    await restoreMySQL();
+    await restoreMongo();
+    await restoreRedis();
+    console.log("🎉 Restauración completa");
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}
+
+main();

@@ -14,13 +14,11 @@ app.get("/mercados", async (req, res) => {
   const key = KEYS.MERCADO(mercadoId);
 
   try {
-    // Intentar recuperar desde Redis
     const cached = await getHash(key, "data");
     if (cached) {
       return res.json({ source: "cache", data: cached });
     }
 
-    // Si no está en cache, consultar MySQL
     const conn = await getConnection();
     const [rows] = await conn.execute("SELECT * FROM mercados");
     await conn.end();
@@ -31,7 +29,6 @@ app.get("/mercados", async (req, res) => {
 
     const mercado = rows;
 
-    // Guardar en Redis
     await saveHash(key, { data: JSON.stringify(mercado) }, TTL.MERCADOS.MAX);
 
     res.json({ source: "db", data: mercado });
