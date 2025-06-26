@@ -117,4 +117,4 @@ EXECUTE FUNCTION desactivar_metodos_pago_usuario();
 --SELECT count(*), id_usuario FROM metodos_pago group by id_usuario order by count(*) desc; el que mas tiene
 -- UPDATE usuarios SET estado = true WHERE id_usuario = ?; que este activo para desactivarlo luego
 -- UPDATE usuarios SET estado = false WHERE id_usuario = ?; y se dispare el trigger
--- SELECT * FROM metodos_pago WHERE id_usuario = ?;
+-- SELECT * FROM metodos_pago WHERE id_usuario = ;

@@ -1,42 +1,22 @@
--- 1. Vista: vista_apuestas_activas
-EXPLAIN ANALYZE
-SELECT 
-  a.id_apuesta,
-  u.nombre AS nombre_usuario,
-  e.nombre_evento,
-  a.monto,
-  a.ganancia_esperada,
-  a.fecha
-FROM apuestas a
-JOIN usuarios u ON u.id_usuario = a.id_usuario
-JOIN mercados m ON m.id_mercado = a.id_mercado
-JOIN eventos e ON e.id_evento = m.id_evento
-WHERE a.estado_apuesta = 'activa';
+explain analyze 
+SELECT
+    e.id_evento,
+    e.nombre_evento,
+    e.deporte,
+    e.fecha,
+    eq.nombre AS equipo,
+    CASE ee.es_local WHEN 1 THEN 'Local' ELSE 'Visitante' END AS rol_equipo,
+    c.nombre AS categoria,
+    p.nombre AS patrocinador,
+    m.tipo_mercado,
+    m.cuota
+FROM eventos e
+LEFT JOIN evento_equipos ee ON ee.id_evento = e.id_evento
+LEFT JOIN equipos eq ON eq.id_equipo = ee.id_equipo
+LEFT JOIN eventos_categorias ec ON ec.id_evento = e.id_evento
+LEFT JOIN categorias c ON c.id_categoria = ec.id_categoria
+LEFT JOIN evento_patrocinadores ep ON ep.id_evento = e.id_evento
+LEFT JOIN patrocinadores p ON p.id_patrocinador = ep.id_patrocinador
+LEFT JOIN mercados m ON m.id_evento = e.id_evento;
 
--- 2. Vista: vista_top_usuarios_apuestas
-EXPLAIN ANALYZE
-SELECT 
-  u.id_usuario,
-  u.nombre AS nombre_usuario,
-  COUNT(a.id_apuesta) AS total_apuestas,
-  SUM(a.monto) AS monto_total_apostado
-FROM usuarios u
-JOIN apuestas a ON u.id_usuario = a.id_usuario
-GROUP BY u.id_usuario, u.nombre
-ORDER BY total_apuestas DESC;
-
--- 3. Función simulada (consulta por usuario)
-EXPLAIN ANALYZE
-SELECT a.id_apuesta, e.nombre_evento, a.monto, a.ganancia_esperada
-FROM apuestas a
-JOIN mercados m ON a.id_mercado = m.id_mercado
-JOIN eventos e ON m.id_evento = e.id_evento
-WHERE a.id_usuario = 1;
-
--- 4. Procedimiento simulado: cancelar evento
-EXPLAIN ANALYZE
-UPDATE apuestas
-SET estado_apuesta = 'cancelada'
-WHERE id_mercado IN (
-  SELECT id_mercado FROM mercados WHERE id_evento = 400
-);
+-- select * from vista_detalle_eventos_simple
