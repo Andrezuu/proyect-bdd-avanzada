@@ -7,6 +7,7 @@ echo "==== Iniciando carga de datos SQL + Python ===="
 docker cp postgres/init.sql apuestas_postgres_primary:/tmp/init.sql
 docker exec apuestas_postgres_primary sh -c "PGPASSWORD=\$POSTGRESQL_PASSWORD psql -U \$POSTGRESQL_USERNAME -d \$POSTGRESQL_DATABASE -f /tmp/init.sql"
 
+sleep 10
 # Copiar y ejecutar init.sql en MySQL
 docker cp mysql/init.sql apuestas_mysql:/tmp/init.sql
 docker exec apuestas_mysql sh -c "mysql -u root -p\$MYSQL_ROOT_PASSWORD \$MYSQL_DATABASE < /tmp/init.sql"
