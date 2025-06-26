@@ -15,6 +15,7 @@ END;
 
 DELIMITER ;
 
+-- call sp_get_eventos_activos();
 DROP PROCEDURE IF EXISTS sp_get_mercados_por_evento;
 DELIMITER //
 
@@ -24,7 +25,7 @@ BEGIN
     m.id_mercado,
     m.tipo_mercado,
     m.cuota
-  FROM mysql_server.mercados m
+  FROM mercados m
   WHERE m.id_evento = p_id_evento AND m.estado = 1;
 END
 //
