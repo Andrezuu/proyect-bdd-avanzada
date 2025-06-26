@@ -1,13 +1,15 @@
-CREATE INDEX idx_apuestas_estado ON apuestas (estado_apuesta);
-CREATE INDEX idx_apuestas_usuario ON apuestas (id_usuario);
-CREATE INDEX idx_apuestas_mercado ON apuestas (id_mercado);
+-- Índice para buscar eventos por fecha (muy común)
+CREATE INDEX idx_eventos_fecha ON eventos(fecha);
 
-CREATE INDEX idx_mercados_evento ON mercados (id_evento);
-CREATE INDEX idx_eventos_id ON eventos (id_evento);
-CREATE INDEX idx_usuarios_id ON usuarios (id_usuario);
+-- Índice para acelerar JOINs en mercados con eventos
+CREATE INDEX idx_mercados_id_evento ON mercados(id_evento);
 
-CREATE INDEX idx_apuestas_usuario_monto ON apuestas (id_usuario, monto);
-CREATE INDEX idx_apuestas_id_usuario ON apuestas (id_usuario);
+-- Índices para optimizar JOINs en tablas intermedias de relaciones muchos a muchos
+CREATE INDEX idx_eventos_categorias_id_evento ON eventos_categorias(id_evento);
+CREATE INDEX idx_eventos_categorias_id_categoria ON eventos_categorias(id_categoria);
 
--- Reutilizado para procedimiento sp_cancelar_evento
-CREATE INDEX idx_apuestas_mercado_estado ON apuestas (id_mercado, estado_apuesta);
+CREATE INDEX idx_evento_equipos_id_evento ON evento_equipos(id_evento);
+CREATE INDEX idx_evento_equipos_id_equipo ON evento_equipos(id_equipo);
+
+CREATE INDEX idx_evento_patrocinadores_id_evento ON evento_patrocinadores(id_evento);
+CREATE INDEX idx_evento_patrocinadores_id_patrocinador ON evento_patrocinadores(id_patrocinador);
