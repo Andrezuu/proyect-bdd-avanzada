@@ -147,8 +147,6 @@ proyect-bdd-avanzada/
 ├── package-lock.json                   # Lock de dependencias Node.js
 ├── package.json                        # Dependencias y scripts Node.js
 └── README.md                           # Documentación principal del proyecto
-
-
 ```
 
 ---
