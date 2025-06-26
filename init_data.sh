@@ -16,7 +16,7 @@ python3 scripts/init_data.py
 
 # ---------- POSTGRES ----------
 echo "[PostgreSQL] Ejecutando archivos SQL..."
-for file in views functions procedures triggers indexes; do
+for file in views functions procedures triggers indexes roles; do
     if [ -f "postgres/${file}.sql" ]; then
         echo "[PostgreSQL] ${file}.sql"
         docker cp "postgres/${file}.sql" apuestas_postgres_primary:/tmp/${file}.sql
@@ -28,7 +28,7 @@ done
 
 # ---------- MYSQL ----------
 echo "[MySQL] Ejecutando archivos SQL..."
-for file in functions procedures triggers indexes; do
+for file in functions procedures triggers indexes roles; do
     if [ -f "mysql/${file}.sql" ]; then
         echo "[MySQL] ${file}.sql"
         docker cp "mysql/${file}.sql" apuestas_mysql:/tmp/${file}.sql

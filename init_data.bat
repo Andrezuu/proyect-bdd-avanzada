@@ -12,7 +12,7 @@ python scripts/init_data.py
 
 REM ---------- POSTGRES ----------
 echo [PostgreSQL] Ejecutando archivos SQL...
-for %%F in (views functions procedures triggers indexes ) do (
+for %%F in (views functions procedures triggers indexes roles) do (
     if exist postgres/%%F.sql (
         echo [PostgreSQL] %%F.sql
         docker cp postgres/%%F.sql apuestas_postgres_primary:/tmp/%%F.sql
@@ -24,7 +24,7 @@ for %%F in (views functions procedures triggers indexes ) do (
 
 REM ---------- MYSQL ----------
 echo [MySQL] Ejecutando archivos SQL...
-for %%F in (functions procedures triggers indexes) do (
+for %%F in (functions procedures triggers indexes roles) do (
     if exist mysql/%%F.sql (
         echo [MySQL] %%F.sql
         docker cp mysql/%%F.sql apuestas_mysql:/tmp/%%F.sql
