@@ -1,5 +1,3 @@
--- init_roles_postgres.sql
-
 -- Crear roles
 CREATE ROLE admin;
 CREATE ROLE apostador;

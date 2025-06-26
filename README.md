@@ -49,6 +49,7 @@ cp .env.example .env
 Este paso levantará:
 
 - PostgreSQL
+- MySQL
 - MongoDB
 - Redis
 
@@ -142,6 +143,7 @@ proyect-bdd-avanzada/
 │   │   └── diagrama_redis.md
 │   ├── guides/
 │   │   ├── installation.md
+## etl/
 │   │   └── backup-restore.md
 │   └── development/
 │

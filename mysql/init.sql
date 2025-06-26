@@ -1,4 +1,3 @@
--- MySQL version of init.sql
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS eventos;
