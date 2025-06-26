@@ -64,7 +64,8 @@ pip install pymongo faker psycopg2-binary mysql-connector-python
 5. **Inicializa la base de datos**
 
 ```bash
-./init.bat
+./init.bat # Si estas en windows
+./init.sh # Si estas en un sistema Unix, asegurate de darle permiso de ejecucion
 # Ejecuta todos los scripts relacionales automáticamente
 ```
 
