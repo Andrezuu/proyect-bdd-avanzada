@@ -1,6 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto; 
 
---FUNCIONES
+--FUNCIONES ACTUALIZADAS PARA POSTGRESQL
+
+-- 1F - Autenticar usuario (sin cambios)
 CREATE OR REPLACE FUNCTION autenticar_usuario(
   p_email TEXT,
   p_contrasena TEXT
@@ -27,7 +29,7 @@ BEGIN
 END;
 $$;
 
---2
+-- 2F - Get saldo usuario (sin cambios)
 CREATE OR REPLACE FUNCTION get_saldo_usuario(p_id_usuario INT)
 RETURNS NUMERIC AS $$
 DECLARE
@@ -41,80 +43,114 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---3
-CREATE OR REPLACE FUNCTION get_eventos_activos()
-RETURNS TABLE(
-  id_evento INT,
-  nombre_evento TEXT,
-  deporte TEXT,
-  fecha TIMESTAMP
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT id_evento, nombre_evento, deporte, fecha
-  FROM eventos
-  WHERE fecha > NOW() AND estado != 'cancelado';
-END;
-$$ LANGUAGE plpgsql;
-
---4
-CREATE OR REPLACE FUNCTION get_mercados_por_evento(p_id_evento INT)
-RETURNS TABLE(
-  id_mercado INT,
-  tipo_mercado TEXT,
-  cuota NUMERIC
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT id_mercado, tipo_mercado, cuota
-  FROM mercados
-  WHERE id_evento = p_id_evento AND estado = TRUE;
-END;
-$$ LANGUAGE plpgsql;
-
-
---5
+-- 3F - Get apuestas por usuario (actualizada para PostgreSQL)
 CREATE OR REPLACE FUNCTION get_apuestas_por_usuario(p_usuario INT)
 RETURNS TABLE(
   id_apuesta INT,
-  evento TEXT,
+  id_mercado INT,
   monto NUMERIC,
-  ganancia_esperada NUMERIC
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT a.id_apuesta, e.nombre_evento, a.monto, a.ganancia_esperada
-  FROM apuestas a
-  JOIN mercados m ON a.id_mercado = m.id_mercado
-  JOIN eventos e ON m.id_evento = e.id_evento
-  WHERE a.id_usuario = p_usuario;
-END;
-$$ LANGUAGE plpgsql;
-
---6
-CREATE OR REPLACE FUNCTION get_comentarios_evento(p_id_evento INT)
-RETURNS TABLE(
-  id_usuario INT,
-  comentario TEXT,
+  ganancia_esperada NUMERIC,
+  estado_apuesta TEXT,
   fecha TIMESTAMP
 ) AS $$
 BEGIN
   RETURN QUERY
-  SELECT id_usuario, comentario, created_at
-  FROM comentarios_eventos
-  WHERE id_evento = p_id_evento;
+  SELECT a.id_apuesta, a.id_mercado, a.monto, a.ganancia_esperada, a.estado_apuesta, a.fecha
+  FROM apuestas a
+  WHERE a.id_usuario = p_usuario
+  ORDER BY a.fecha DESC;
 END;
 $$ LANGUAGE plpgsql;
 
+-- 4F - Get historial transacciones usuario
+CREATE OR REPLACE FUNCTION get_historial_transacciones(p_id_usuario INT)
+RETURNS TABLE(
+  id_transaccion INT,
+  tipo_transaccion VARCHAR,
+  monto NUMERIC,
+  estado VARCHAR,
+  fecha TIMESTAMP
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT t.id_transaccion, t.tipo_transaccion, t.monto, t.estado, t.created_at
+  FROM transacciones t
+  WHERE t.id_usuario = p_id_usuario
+  ORDER BY t.created_at DESC;
+END;
+$$ LANGUAGE plpgsql;
 
---prueba
+-- 5F - Actualizar saldo usuario
+CREATE OR REPLACE FUNCTION actualizar_saldo_usuario(
+  p_id_usuario INT,
+  p_nuevo_saldo NUMERIC
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE usuarios
+  SET saldo = p_nuevo_saldo,
+      updated_at = NOW()
+  WHERE id_usuario = p_id_usuario;
 
-SELECT * FROM apuestas WHERE id_usuario = 1;
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
 
+-- 6F - Verificar fondos suficientes
+CREATE OR REPLACE FUNCTION verificar_fondos_suficientes(
+  p_id_usuario INT,
+  p_monto NUMERIC
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_saldo_actual NUMERIC;
+BEGIN
+  SELECT saldo INTO v_saldo_actual
+  FROM usuarios
+  WHERE id_usuario = p_id_usuario;
 
-SELECT saldo FROM usuarios WHERE id_usuario = 1;
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
 
--- SELECT actualizar_saldo_usuario(1, 500.00);
+  RETURN v_saldo_actual >= p_monto;
+END;
+$$ LANGUAGE plpgsql;
 
-SELECT saldo FROM usuarios WHERE id_usuario = 1;
------
+-- 7F - Get estadísticas usuario
+CREATE OR REPLACE FUNCTION get_estadisticas_usuario(p_id_usuario INT)
+RETURNS TABLE(
+  total_apuestas BIGINT,
+  monto_total_apostado NUMERIC,
+  ganancia_esperada_total NUMERIC,
+  apuestas_activas BIGINT,
+  apuestas_ganadas BIGINT,
+  apuestas_perdidas BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    COUNT(*) as total_apuestas,
+    COALESCE(SUM(a.monto), 0) as monto_total_apostado,
+    COALESCE(SUM(a.ganancia_esperada), 0) as ganancia_esperada_total,
+    COUNT(*) FILTER (WHERE a.estado_apuesta = 'activa') as apuestas_activas,
+    COUNT(*) FILTER (WHERE a.estado_apuesta = 'ganada') as apuestas_ganadas,
+    COUNT(*) FILTER (WHERE a.estado_apuesta = 'perdida') as apuestas_perdidas
+  FROM apuestas a
+  WHERE a.id_usuario = p_id_usuario;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 8F - Validar usuario activo
+CREATE OR REPLACE FUNCTION validar_usuario_activo(p_id_usuario INT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_estado BOOLEAN;
+BEGIN
+  SELECT estado INTO v_estado
+  FROM usuarios
+  WHERE id_usuario = p_id_usuario;
+
+  RETURN COALESCE(v_estado, FALSE);
+END;
+$$ LANGUAGE plpgsql;

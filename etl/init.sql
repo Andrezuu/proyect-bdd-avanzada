@@ -1,13 +1,15 @@
 --METODOS DE PAGO PREFERIDO
-CREATE SCHEMA apuestas_olimpiadas;
+CREATE SCHEMA if not exists apuestas_olimpiadas;
 
-CREATE TABLE apuestas_olimpiadas.dim_metodos_tipo_pago (
+drop table if exists apuestas_olimpiadas.dim_metodos_tipo_pago cascade;
+    CREATE TABLE apuestas_olimpiadas.dim_metodos_tipo_pago (
     id_metodos_tipo SERIAL PRIMARY KEY,
     tipo VARCHAR(50),
     proveedor VARCHAR(100),
     moneda VARCHAR(10)
 );
 
+drop table if exists apuestas_olimpiadas.dim_usuario cascade;
 CREATE TABLE apuestas_olimpiadas.dim_usuario (
     id_usuario SERIAL PRIMARY KEY,
     nombre VARCHAR(100),
@@ -18,6 +20,7 @@ CREATE TABLE apuestas_olimpiadas.dim_usuario (
     FOREIGN KEY (id_metodos_tipo) REFERENCES apuestas_olimpiadas.dim_metodos_tipo_pago(id_metodos_tipo)
 );
 
+drop table if exists apuestas_olimpiadas.dim_fecha cascade;
 CREATE TABLE apuestas_olimpiadas.dim_fecha (
     id_fecha SERIAL PRIMARY KEY,
     anio INT,
@@ -26,7 +29,7 @@ CREATE TABLE apuestas_olimpiadas.dim_fecha (
     semana INT
 );
 
-
+drop table if exists apuestas_olimpiadas.dim_estado cascade;
 CREATE TABLE apuestas_olimpiadas.dim_estado (
     id_estado SERIAL PRIMARY KEY,
     estado_del_pago VARCHAR(50),
@@ -34,6 +37,7 @@ CREATE TABLE apuestas_olimpiadas.dim_estado (
     descripcion TEXT
 );
 
+drop table if exists apuestas_olimpiadas.fact_metodos_pago cascade;
 CREATE TABLE apuestas_olimpiadas.fact_metodos_pago (
     id_pago SERIAL PRIMARY KEY,
     monto_del_pago NUMERIC(10,2),

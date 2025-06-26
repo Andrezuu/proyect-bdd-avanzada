@@ -3,10 +3,25 @@ echo Copiando y ejecutando PostgreSQL...
 docker cp postgres/init.sql apuestas_postgres_primary:/tmp/init.sql
 docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/init.sql"
 
+docker cp postgres/triggers.sql apuestas_postgres_primary:/tmp/triggers.sql
+docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/triggers.sql"
+
+docker cp postgres/functions.sql apuestas_postgres_primary:/tmp/functions.sql
+docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/functions.sql"
+
+docker cp postgres/procedures.sql apuestas_postgres_primary:/tmp/procedures.sql
+docker exec apuestas_postgres_primary sh -c "PGPASSWORD=$(printenv POSTGRESQL_PASSWORD) psql -U $(printenv POSTGRESQL_USERNAME) -d $(printenv POSTGRESQL_DATABASE) -f /tmp/procedures.sql"
+
 timeout /t 10 
 echo Copiando y ejecutando MySQL...
 docker cp mysql/init.sql apuestas_mysql:/tmp/init.sql
 docker exec apuestas_mysql sh -c "mysql -u root -p$(printenv MYSQL_ROOT_PASSWORD) $(printenv MYSQL_DATABASE) < /tmp/init.sql"
+
+docker cp mysql/functions.sql apuestas_mysql:/tmp/functions.sql
+docker exec apuestas_mysql sh -c "mysql -u root -p$(printenv MYSQL_ROOT_PASSWORD) $(printenv MYSQL_DATABASE) < /tmp/functions.sql"
+
+docker cp mysql/procedures.sql apuestas_mysql:/tmp/procedures.sql
+docker exec apuestas_mysql sh -c "mysql -u root -p$(printenv MYSQL_ROOT_PASSWORD) $(printenv MYSQL_DATABASE) < /tmp/procedures.sql"
 
 echo Configurando MongoDB Sharding...
 
