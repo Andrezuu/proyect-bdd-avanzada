@@ -1,21 +1,19 @@
 ----
 ------------------------VISTASSSSS--------
 --1V
-CREATE OR REPLACE VIEW vista_apuestas_activas AS
+CREATE OR REPLACE VIEW vista_resumen_usuario AS
 SELECT 
-  a.id_apuesta,
-  u.nombre AS nombre_usuario,
-  e.nombre_evento,
-  a.monto,
-  a.ganancia_esperada,
-  a.fecha
-FROM apuestas a
-JOIN usuarios u ON u.id_usuario = a.id_usuario
-JOIN mercados m ON m.id_mercado = a.id_mercado
-JOIN eventos e ON e.id_evento = m.id_evento
-WHERE a.estado_apuesta = 'activa';
-
-SELECT * FROM vista_apuestas_activas;
+    u.id_usuario,
+    u.nombre AS nombre_usuario,
+    u.email,
+    u.saldo,
+    COUNT(a.id_apuesta) AS total_apuestas,
+    COALESCE(SUM(a.monto), 0) AS total_apostado,
+    COALESCE(SUM(a.ganancia_esperada), 0) AS ganancia_total_esperada,
+    MAX(a.fecha) AS ultima_apuesta
+FROM usuarios u
+LEFT JOIN apuestas a ON a.id_usuario = u.id_usuario
+GROUP BY u.id_usuario, u.nombre, u.email, u.saldo;
 
 ----2V
 CREATE OR REPLACE VIEW vista_top_usuarios_apuestas AS
@@ -29,15 +27,4 @@ JOIN apuestas a ON u.id_usuario = a.id_usuario
 GROUP BY u.id_usuario, u.nombre
 ORDER BY total_apuestas DESC;
 
-SELECT * FROM vista_top_usuarios_apuestas;
-
-----3V
-CREATE OR REPLACE VIEW vista_eventos_finalizados AS
-SELECT 
-  id_evento,
-  nombre_evento,
-  deporte,
-  fecha,
-FROM eventos
-
-SELECT * FROM vista_eventos_finalizados;
+-- SELECT * FROM vista_top_usuarios_apuestas;

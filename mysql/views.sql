@@ -1,43 +1,22 @@
--- 1. Vista de apuestas activas
-CREATE OR REPLACE VIEW vista_apuestas_activas AS
-SELECT 
-  a.id_apuesta,
-  u.nombre AS nombre_usuario,
-  e.nombre_evento,
-  a.monto,
-  a.ganancia_esperada,
-  a.fecha
-FROM apuestas a
-JOIN usuarios u ON u.id_usuario = a.id_usuario
-JOIN mercados m ON m.id_mercado = a.id_mercado
-JOIN eventos e ON e.id_evento = m.id_evento
-WHERE a.estado_apuesta = 'activa';
+CREATE OR REPLACE VIEW vista_detalle_eventos_simple AS
+SELECT
+    e.id_evento,
+    e.nombre_evento,
+    e.deporte,
+    e.fecha,
+    eq.nombre AS equipo,
+    CASE ee.es_local WHEN 1 THEN 'Local' ELSE 'Visitante' END AS rol_equipo,
+    c.nombre AS categoria,
+    p.nombre AS patrocinador,
+    m.tipo_mercado,
+    m.cuota
+FROM eventos e
+LEFT JOIN evento_equipos ee ON ee.id_evento = e.id_evento
+LEFT JOIN equipos eq ON eq.id_equipo = ee.id_equipo
+LEFT JOIN eventos_categorias ec ON ec.id_evento = e.id_evento
+LEFT JOIN categorias c ON c.id_categoria = ec.id_categoria
+LEFT JOIN evento_patrocinadores ep ON ep.id_evento = e.id_evento
+LEFT JOIN patrocinadores p ON p.id_patrocinador = ep.id_patrocinador
+LEFT JOIN mercados m ON m.id_evento = e.id_evento;
 
-SELECT * FROM vista_apuestas_activas;
-
--- 2. Vista de usuarios top por apuestas
-CREATE OR REPLACE VIEW vista_top_usuarios_apuestas AS
-SELECT 
-  u.id_usuario,
-  u.nombre AS nombre_usuario,
-  COUNT(a.id_apuesta) AS total_apuestas,
-  SUM(a.monto) AS monto_total_apostado
-FROM usuarios u
-JOIN apuestas a ON u.id_usuario = a.id_usuario
-GROUP BY u.id_usuario, u.nombre
-ORDER BY total_apuestas DESC;
-
-SELECT * FROM vista_top_usuarios_apuestas;
-
--- 3. Vista de eventos finalizados
-CREATE OR REPLACE VIEW vista_eventos_finalizados AS
-SELECT 
-  id_evento,
-  nombre_evento,
-  deporte,
-  fecha,
-  resultado
-FROM eventos
-WHERE resultado IS NOT NULL;
-
-SELECT * FROM vista_eventos_finalizados;
+-- select * from vista_detalle_eventos_simple
