@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   # PostgreSQL Master
   postgres_primary:
@@ -54,19 +53,55 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-
-  # MongoDB 
-  mongodb:
+  # ===== MONGODB SHARDING SETUP (MÍNIMO) =====
+  
+  # Config Server (1 solo para mínimo)
+  mongo_configsvr:
+    container_name: mongo_configsvr
+    hostname: mongo_configsvr
     image: mongo:6.0
-    container_name: apuestas_mongo
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: mongo
-      MONGO_INITDB_ROOT_PASSWORD: mongo
+    command: mongod --configsvr --replSet mongors1conf --dbpath /data/db --port 27019 --bind_ip_all
+    volumes:
+      - mongo_config1:/data/db
+    networks:
+      - mongo-network
+
+  # Shard 1 (1 solo nodo para mínimo)
+  mongo_shard1:
+    container_name: mongo_shard1
+    hostname: mongo_shard1
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet mongors1 --dbpath /data/db --port 27018 --bind_ip_all
+    volumes:
+      - mongo_shard1:/data/db
+    networks:
+      - mongo-network
+
+  # Shard 2 (1 solo nodo para mínimo)
+  mongo_shard2:
+    container_name: mongo_shard2
+    hostname: mongo_shard2
+    image: mongo:6.0
+    command: mongod --shardsvr --replSet mongors2 --dbpath /data/db --port 27018 --bind_ip_all
+    volumes:
+      - mongo_shard2:/data/db
+    networks:
+      - mongo-network
+
+  # Mongos Router (punto de entrada principal)
+  mongo_router:
+    container_name: mongo_router
+    hostname: mongo_router
+    image: mongo:6.0
+    depends_on:
+      - mongo_configsvr
+      - mongo_shard1  
+      - mongo_shard2
+    command: mongos --configdb mongors1conf/mongo_configsvr:27019 --port 27017 --bind_ip_all
     ports:
       - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    networks:
+      - mongo-network
 
   # Redis Cache
   redis:
@@ -82,5 +117,11 @@ volumes:
   primary_data:
   replica_data:
   mysql_data:
-  mongo_data:
+  mongo_config1:
+  mongo_shard1:
+  mongo_shard2:
   redis_data:
+
+networks:
+  mongo-network:
+    driver: bridge
