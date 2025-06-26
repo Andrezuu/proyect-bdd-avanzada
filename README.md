@@ -7,17 +7,12 @@ Sistema de base de datos avanzado para gestión de apuestas deportivas(OLIMPIADA
 ### 🏗️ Arquitectura
 - [Arquitectura Docker](docs/architecture/diagrama_docker.md)
 - [Arquitectura Redis](docs/architecture/diagrama_redis.md)
-- [Esquema de Base de Datos](architecture/database-schema.md)
-
-### 🚀 Guías Rápidas
-- [Instalación y Configuración](guides/installation.md)
-- [Backup y Restore](guides/backup-restore.md)
 
 ## 🧰 Tecnologías Utilizadas
 
 | Componente | Tecnología | Rol |
 | --- | --- | --- |
-| Base relacional | PostgreSQL 15 | Gestión estructurada y ACID |
+| Base relacional | PostgreSQL 15 | MySQL 8 | Gestión estructurada y ACID |
 | Base NoSQL | MongoDB | Comentarios, vistas embebidas, consultas agregadas |
 | Caché | Redis | Aceleración de consultas críticas |
 | Contenedores | Docker & Compose | Arquitectura distribuida y replicada |
@@ -141,11 +136,7 @@ proyect-bdd-avanzada/
 │   ├── architecture/
 │   │   ├── diagrama_docker.md
 │   │   └── diagrama_redis.md
-│   ├── guides/
-│   │   ├── installation.md
-## etl/
-│   │   └── backup-restore.md
-│   └── development/
+│   │   └── diagrama_mongo.md
 │
 └── init.bat                # Automatiza ejecución de scripts SQL
 
