@@ -14,7 +14,6 @@ const execCommand = (command) => {
   });
 };
 
-// Variables
 const POSTGRES_CONTAINER = "apuestas_postgres_primary";
 const POSTGRES_USER = "postgres";
 const POSTGRES_DB = "apuestas_db";
@@ -28,7 +27,6 @@ const REDIS_CONTAINER = "apuestas_redis";
 
 const BACKUP_BASE_DIR = path.join(__dirname, "backups");
 
-// Obtener último backup usando Node.js nativo
 const getLatestBackupFolder = () => {
   if (!fs.existsSync(BACKUP_BASE_DIR)) {
     throw new Error(`Directorio de backups no existe: ${BACKUP_BASE_DIR}`);
@@ -60,30 +58,28 @@ async function restorePostgres() {
   console.log("✅ PostgreSQL restaurado");
 }
 
-async function restoreMySQL() {
+const restoreMySQL = async () => {
   console.log("Restaurando MySQL...");
   const latestBackupDir = getLatestBackupFolder();
   const backupFile = path.join(latestBackupDir, "mysql_backup.sql");
   
-  // En Windows usamos type, en Unix cat
   const catCommand = process.platform === 'win32' ? 'type' : 'cat';
   await execCommand(`${catCommand} "${backupFile}" | docker exec -i ${MYSQL_CONTAINER} mysql -u root -p${MYSQL_ROOT_PASSWORD}`);
   console.log("✅ MySQL restaurado");
 }
 
-async function restoreMongo() {
+const restoreMongo = async () => {
   console.log("Restaurando MongoDB...");
   const latestBackupDir = getLatestBackupFolder();
   const backupFile = path.join(latestBackupDir, "mongo_backup.archive");
   
   await execCommand(`docker cp "${backupFile}" ${MONGO_ROUTER_CONTAINER}:/tmp/backup.archive`);
-  // Excluir el directorio 'config' para sistemas sharded
   await execCommand(`docker exec ${MONGO_ROUTER_CONTAINER} mongorestore --drop --gzip --archive=/tmp/backup.archive --nsExclude="config.*"`);
   await execCommand(`docker exec ${MONGO_ROUTER_CONTAINER} rm /tmp/backup.archive`);
   console.log("✅ MongoDB restaurado");
 }
 
-async function restoreRedis() {
+const restoreRedis = async () => {
   console.log("Restaurando Redis...");
   const latestBackupDir = getLatestBackupFolder();
   const backupFile = path.join(latestBackupDir, "redis_dump.rdb");
@@ -93,7 +89,7 @@ async function restoreRedis() {
   console.log("✅ Redis restaurado");
 }
 
-async function main() {
+const main = async () => {
   try {
     await restorePostgres();
     await restoreMySQL();
