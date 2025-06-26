@@ -98,29 +98,56 @@ node scripts/restore.js
 
 ```
 proyect-bdd-avanzada/
-├── postgres/               # Scripts PostgreSQL
-│   ├── init.sql            # Tablas y relaciones
-│   ├── functions.sql       # Funciones PL/pgSQL
-│   ├── procedures.sql      # Procedimientos almacenados
-│   ├── triggers.sql        # Automatización de lógica
-│   ├── views.sql           # Consultas lógicas encapsuladas
-│   └── indexes.sql         # Índices para optimización
 │
-├── mongodb/                # Consultas MongoDB
-│   └── queries.js          # $lookup, $group, $unwind, etc.
+├── docs/architecture/                  # Diagramas de arquitectura y Redis
+│   ├── diagrama_docker.md
+│   ├── diagrama_mongo.md
+│   └── diagrama_redis.md
 │
-├── scripts/
-│   ├── init_data.py        # Generación de datos con Faker
-│   ├── backup.js           # Backup PostgreSQL
-│   └── restore.js          # Restauración de backups
+├── etl/                                # Scripts ETL
+│   └── init.sql
 │
-├── docs/
-│   ├── architecture/
-│   │   ├── diagrama_docker.md
-│   │   └── diagrama_redis.md
-│   │   └── diagrama_mongo.md
+├── mysql/                              # Scripts de base de datos MySQL
+│   ├── functions.sql
+│   ├── hashing.sql
+│   ├── indexes.sql
+│   ├── init.sql
+│   ├── optimization.sql
+│   ├── procedures.sql
+│   ├── roles.sql
+│   ├── triggers.sql
+│   └── views.sql
 │
-└── init.bat                # Automatiza ejecución de scripts SQL
+├── postgres/                           # Scripts de base de datos PostgreSQL
+│   ├── functions.sql
+│   ├── hashing.sql
+│   ├── indexes.sql
+│   ├── init.sql
+│   ├── optimization.sql
+│   ├── procedures.sql
+│   ├── roles.sql
+│   ├── triggers.sql
+│   └── views.sql
+│
+├── scripts/                            # Scripts para backup y carga
+│   ├── backup.js
+│   ├── init_data.py
+│   └── restore.js
+│
+├── server/                             # Servidor para conexión/Redis
+│   ├── config.js
+│   └── server.js
+│
+├── .env.example                        # Archivo de entorno de ejemplo
+├── .gitignore                          # Ignora archivos y carpetas innecesarias
+├── consultasMG.js                      # Consultas para MongoDB
+├── docker-compose.yml                  # Orquestación de contenedores con Docker
+├── init_data.bat                       # Script de inicialización para Windows
+├── init_data.sh                        # Script de inicialización para Unix/Linux
+├── package-lock.json                   # Lock de dependencias Node.js
+├── package.json                        # Dependencias y scripts Node.js
+└── README.md                           # Documentación principal del proyecto
+
 
 ```
 
